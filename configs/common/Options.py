@@ -300,6 +300,15 @@ def addCommonOptions(parser):
                         help="""Data dependency trace file input to
                       Elastic Trace probe in a capture simulation and
                       Trace CPU in a replay simulation""", default="")
+    parser.add_argument("--memory-trace-file", action="store", type=str,
+                        help="""Memory access trace file""", default="")
+    # Trace Monitor option
+    parser.add_argument("--trace-monitor",
+                        action="store_true",
+                        help="enable trace monitor")
+    parser.add_argument("--access-trace",
+                        action="store_true",
+                        help="enable trace monitor")
 
     # dist-gem5 options
     parser.add_argument("--dist", action="store_true",

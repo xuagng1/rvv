@@ -55,6 +55,7 @@
 #include "base/statistics.hh"
 #include "cpu/difftest.hh"
 #include "debug/Mwait.hh"
+#include "mem/cache/base.hh"
 #include "mem/htm.hh"
 #include "mem/port_proxy.hh"
 #include "sim/clocked_object.hh"
@@ -734,6 +735,11 @@ class BaseCPU : public ClockedObject
     int committedInstNum = 0;
 
     std::vector<std::pair<Addr, std::string>> committedInsts;
+
+    public:
+      BaseCache * l1cache;
+      BaseCache * l2cache;
+      BaseCache * l3cache;
 };
 
 } // namespace gem5

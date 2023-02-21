@@ -157,7 +157,10 @@ BaseCPU::BaseCPU(const Params &p, bool is_checker)
       warmupInstCount(p.warmupInstCount),
       enableDifftest(p.enable_difftest),
       dumpCommitFlag(p.dump_commit),
-      dumpStartNum(p.dump_start)
+      dumpStartNum(p.dump_start),
+      l1cache(p.l1_cache),
+      l2cache(p.l2_cache),
+      l3cache(p.l3_cache)
 {
     // if Python did not provide a valid ID, do it here
     if (_cpuId == -1 ) {

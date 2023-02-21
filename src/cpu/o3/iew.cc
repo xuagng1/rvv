@@ -192,7 +192,19 @@ IEW::IEWStats::IEWStats(CPU *cpu)
                 statistics::units::Count, statistics::units::Count>::get(),
              "Average fanout of values written-back"),
     ADD_STAT(stallEvents, statistics::units::Count::get(),
-             "Number of events the IEW has stalled")
+             "Number of events the IEW has stalled"),
+    ADD_STAT(memStallAnyLoad, statistics::units::Cycle::get(),
+             "Number of cycles with no uops executed "
+             "and at least 1 inflight load that is not completed yet"),
+    ADD_STAT(memStallL1Miss, statistics::units::Cycle::get(),
+            "Number of cycles with no uops executed "
+            "and at least 1 inflight load has missed the L1-cache"),
+    ADD_STAT(memStallL2Miss, statistics::units::Cycle::get(),
+            "Number of cycles with no uops executed "
+            "and at least 1 inflight load has missed the L2-cache"),
+    ADD_STAT(memStallL3Miss, statistics::units::Cycle::get(),
+            "Number of cycles with no uops executed "
+            "and at least 1 inflight load has missed the L3-cache")
 {
     instsToCommit
         .init(cpu->numThreads)
@@ -1192,7 +1204,7 @@ IEW::printAvailableInsts()
     std::cout << "\n";
 }
 
-void
+int
 IEW::executeInsts()
 {
     wbNumInst = 0;
@@ -1440,6 +1452,7 @@ IEW::executeInsts()
     // spot in the queue.
     wbNumInst = 0;
 
+    return insts_to_execute;
 }
 
 void
@@ -1537,9 +1550,10 @@ IEW::tick()
         dispatch(tid);
     }
     instQueue.delayWakeDependents();
+    int executedInst = 0;
 
     if (exeStatus != Squashing) {
-        executeInsts();
+        executedInst = executeInsts();
 
         writebackInsts();
 
@@ -1551,6 +1565,18 @@ IEW::tick()
         // Also should advance its own time buffers if the stage ran.
         // Not the best place for it, but this works (hopefully).
         issueToExecQueue.advance();
+    }
+    if (executedInst == 0) {
+        if (!cpu->l1cache->isMshrQueueFree())
+            ++iewStats.memStallL1Miss;
+        if (!cpu->l2cache->isMshrQueueFree())
+            ++iewStats.memStallL2Miss;
+        if (!cpu->l3cache->isMshrQueueFree())
+            ++iewStats.memStallL3Miss;
+        if (!cpu->l1cache->isMshrQueueFree()
+            || !cpu->l2cache->isMshrQueueFree()
+                || !cpu->l3cache->isMshrQueueFree())
+            ++iewStats.memStallAnyLoad;
     }
 
     bool broadcast_free_entries = false;

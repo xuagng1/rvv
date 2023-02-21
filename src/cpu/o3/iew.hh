@@ -277,7 +277,7 @@ class IEW
      * LSQ to execute the instructions. Also handles any redirects that occur
      * due to the executed instructions.
      */
-    void executeInsts();
+    int executeInsts();
 
     /** Writebacks instructions. In our model, the instruction's execute()
      * function atomically reads registers, executes, and writes registers.
@@ -502,6 +502,11 @@ class IEW
         statistics::Formula wbFanout;
 
         statistics::Vector stallEvents;
+        statistics::Scalar memStallAnyLoad;
+        statistics::Scalar memStallL1Miss;
+        statistics::Scalar memStallL2Miss;
+        statistics::Scalar memStallL3Miss;
+
     } iewStats;
 };
 

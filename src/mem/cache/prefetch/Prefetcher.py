@@ -141,6 +141,74 @@ class QueuedPrefetcher(BasePrefetcher):
     throttle_control_percentage = Param.Percent(0, "Percentage of requests \
         that can be throttled depending on the accuracy of the prefetcher.")
 
+class StreamPrefetcher(QueuedPrefetcher):
+    type = 'StreamPrefetcher'
+    cxx_class = 'gem5::prefetch::Stream'
+    cxx_header = "mem/cache/prefetch/stream.hh"
+    inst_stream_cnt = Param.Unsigned(12, "Number of instruction streams")
+    data_stream_cnt = Param.Unsigned(24, "Number of data streams")
+    dist_demand_l2home = Param.Unsigned(4,
+                "Distance between demand request and L2 home line")
+    dist_tw_l2home = Param.Unsigned(6,
+                "Distance between trigger window edge and L2 home line")
+    dist_fb_l2home = Param.Unsigned(8,
+                "Distance between fall back window edge and L2 home line")
+    dist_within_fb = Param.Unsigned(4,
+                "Window of determining forward/backward")
+    prefetch_degree = Param.Unsigned(1,
+                "prefetching degree for stream prefetcher")
+
+class IPCPPrefetcherHashedSetAssociative(SetAssociative):
+    type = 'IPCPPrefetcherHashedSetAssociative'
+    cxx_class = 'gem5::prefetch::IPCPPrefetcherHashedSetAssociative'
+    cxx_header = "mem/cache/prefetch/ipcp.hh"
+
+class IPCPPrefetcher(QueuedPrefetcher):
+    type = 'IPCPPrefetcher'
+    cxx_class = 'gem5::prefetch::IPCP'
+    cxx_header = "mem/cache/prefetch/ipcp.hh"
+
+    # Do not consult stride prefetcher on instruction accesses
+    on_inst = False
+    prefetch_on_pf_hit = True
+
+    confidence_counter_bits = Param.Unsigned(3,
+        "Number of bits of the confidence counter")
+    initial_confidence = Param.Unsigned(0,
+        "Starting confidence of new entries")
+    confidence_threshold = Param.Unsigned(2,
+        "Prefetch generation confidence threshold")
+
+    use_requestor_id = Param.Bool(False, "Use requestor id based history")
+
+    degree = Param.Int(6, "Number of prefetches to generate")
+    degree_cs = Param.Int(3, "Number of prefetches to generate")
+
+    adjust_interval = Param.Unsigned(256,
+        "epoch for adjusting prefetching degree")
+
+    pn_count_bits = Param.Unsigned(6,
+        "Number of bits of the pn counter")
+
+    table_assoc = Param.Int(4, "Associativity of the PC table")
+    table_entries = Param.MemorySize("64", "Number of entries of the PC table")
+    table_indexing_policy = Param.BaseIndexingPolicy(
+        IPCPPrefetcherHashedSetAssociative(entry_size = 1,
+        assoc = Parent.table_assoc, size = Parent.table_entries),
+        "Indexing policy of the PC table")
+    table_replacement_policy = Param.BaseReplacementPolicy(LRURP(),
+        "Replacement policy of the PC table")
+
+    rst_assoc = Param.Int(8, "Associativity of the RST table")
+    rst_entries = Param.MemorySize("8", "Number of entries of the PC table")
+    rst_region_size = Param.Int(2048, "Number of entries per region")
+    rst_indexing_policy = Param.BaseIndexingPolicy(
+        SetAssociative(entry_size = Parent.rst_region_size,
+        assoc = Parent.rst_assoc,
+        size = Parent.rst_entries * Parent.rst_region_size),
+        "Indexing policy of the RST table")
+    rst_replacement_policy = Param.BaseReplacementPolicy(LRURP(),
+        "Replacement policy of the RST table")
 
 class BertiPrefetcher(QueuedPrefetcher):
     type = "BertiPrefetcher"
@@ -290,17 +358,20 @@ class StridePrefetcher(QueuedPrefetcher):
 
     # Do not consult stride prefetcher on instruction accesses
     on_inst = False
+    prefetch_on_pf_hit = True
 
     confidence_counter_bits = Param.Unsigned(3,
         "Number of bits of the confidence counter")
-    initial_confidence = Param.Unsigned(4,
+    initial_confidence = Param.Unsigned(0,
         "Starting confidence of new entries")
-    confidence_threshold = Param.Percent(50,
+    confidence_threshold = Param.Unsigned(2,
         "Prefetch generation confidence threshold")
 
-    use_requestor_id = Param.Bool(True, "Use requestor id based history")
+    use_requestor_id = Param.Bool(False, "Use requestor id based history")
 
-    degree = Param.Int(4, "Number of prefetches to generate")
+    degree = Param.Int(3, "Number of prefetches to generate")
+    adjust_interval = Param.Unsigned(256,
+        "epoch for adjusting prefetching degree")
 
     table_assoc = Param.Int(4, "Associativity of the PC table")
     table_entries = Param.MemorySize("64", "Number of entries of the PC table")
@@ -308,8 +379,9 @@ class StridePrefetcher(QueuedPrefetcher):
         StridePrefetcherHashedSetAssociative(entry_size = 1,
         assoc = Parent.table_assoc, size = Parent.table_entries),
         "Indexing policy of the PC table")
-    table_replacement_policy = Param.BaseReplacementPolicy(RandomRP(),
+    table_replacement_policy = Param.BaseReplacementPolicy(LRURP(),
         "Replacement policy of the PC table")
+
 
 class TaggedPrefetcher(QueuedPrefetcher):
     type = 'TaggedPrefetcher'
@@ -392,6 +464,9 @@ class SignaturePathPrefetcher(QueuedPrefetcher):
         "Minimum confidence to issue prefetches")
     lookahead_confidence_threshold = Param.Float(0.75,
         "Minimum confidence to continue exploring lookahead entries")
+
+    prefetch_on_access = True
+    prefetch_on_pf_hit = True
 
 class SignaturePathPrefetcherV2(SignaturePathPrefetcher):
     type = 'SignaturePathPrefetcherV2'
@@ -670,6 +745,21 @@ class PIFPrefetcher(QueuedPrefetcher):
         if not isinstance(simObj, SimObject):
             raise TypeError("argument must be of SimObject type")
         self.addEvent(HWPProbeEventRetiredInsts(self, simObj,"RetiredInstsPC"))
+
+class XiangshanPrefetcher(QueuedPrefetcher):
+    type = 'XiangshanPrefetcher'
+    cxx_class = 'gem5::prefetch::Xiangshan'
+    cxx_header = "mem/cache/prefetch/xiangshan.hh"
+    score_max = Param.Unsigned(31, "Max. score to update the best offset")
+    #modified
+    round_max = Param.Unsigned(50, "Max. round to update the best offset")
+    #modified
+    bad_score = Param.Unsigned(1, "Score at which the HWP is disabled")
+    #modified
+    rr_size = Param.Unsigned(256, "Number of entries for rrTable")
+    tag_bits = Param.Unsigned(12, "Bits used to store the tag")
+
+    prefetch_on_pf_hit = True
 
 class MultiPrefetcher(BasePrefetcher):
     type = 'MultiPrefetcher'

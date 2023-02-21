@@ -30,13 +30,15 @@ Import('*')
 
 SimObject('Prefetcher.py', sim_objects=[
     'BasePrefetcher', 'MultiPrefetcher', 'QueuedPrefetcher',
+    'IPCPPrefetcherHashedSetAssociative', 'IPCPPrefetcher',
     'SMSPrefetcher', 'BertiPrefetcher',
     'StridePrefetcherHashedSetAssociative', 'StridePrefetcher',
     'TaggedPrefetcher', 'IndirectMemoryPrefetcher', 'SignaturePathPrefetcher',
     'SignaturePathPrefetcherV2', 'AccessMapPatternMatching', 'AMPMPrefetcher',
     'DeltaCorrelatingPredictionTables', 'DCPTPrefetcher',
     'IrregularStreamBufferPrefetcher', 'SlimAMPMPrefetcher',
-    'BOPPrefetcher', 'SBOOEPrefetcher', 'STeMSPrefetcher', 'PIFPrefetcher'])
+    'BOPPrefetcher', 'XiangshanPrefetcher', 'StreamPrefetcher',
+    'SBOOEPrefetcher', 'STeMSPrefetcher', 'PIFPrefetcher'])
 
 
 DebugFlag('BOPPrefetcher')
@@ -61,3 +63,6 @@ Source('slim_ampm.cc')
 Source('spatio_temporal_memory_streaming.cc')
 Source('stride.cc')
 Source('tagged.cc')
+Source('ipcp.cc')
+Source('stream.cc')
+Source('xiangshan.cc')

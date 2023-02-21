@@ -247,6 +247,11 @@ class BaseSetAssoc : public BaseTags
         }
         return false;
     }
+
+    void handlePrefetchInsertion(CacheBlk *blk, PacketPtr pkt) {
+        replacementPolicy->prefetchInsertion(blk->replacementData, pkt);
+    }
+
 };
 
 } // namespace gem5

@@ -116,6 +116,8 @@ class Base : public ClockedObject
         bool cacheMiss;
         /** Pointer to the associated request data */
         uint8_t *data;
+        /** Whether this event comes from icache */
+        bool iside;
 
       public:
         /**
@@ -171,6 +173,11 @@ class Base : public ClockedObject
         unsigned int getSize() const
         {
             return size;
+        }
+
+        bool isInstFetch() const
+        {
+            return iside;
         }
 
         /**
@@ -357,12 +364,25 @@ class Base : public ClockedObject
         /** The number of times a HW-prefetch is late
          * (hit in cache, MSHR, WB). */
         statistics::Formula pfLate;
+
+        /** The number of timely HW-prefetches
+         * (hit in cache). */
+        statistics::Scalar pfTimely;
+
+        /** The number of untimely HW-prefetches
+         * (demand accesses hit in MSHR). */
+        statistics::Scalar pfUntimely;
+
+        statistics::Formula timeliness ;
     } prefetchStats;
 
     /** Total prefetches issued */
     uint64_t issuedPrefetches;
     /** Total prefetches that has been useful */
     uint64_t usefulPrefetches;
+
+    /** Total prefetches that has been untimely useful */
+    uint64_t usefulPrefetchesUntimely;
 
     /** Registered tlb for address translations */
     BaseTLB * tlb;
@@ -415,6 +435,19 @@ class Base : public ClockedObject
     pfHitInWB()
     {
         prefetchStats.pfHitInWB++;
+    }
+
+    void
+    pfTimely()
+    {
+        prefetchStats.pfTimely++;
+    }
+
+    void
+    pfUntimely()
+    {
+        prefetchStats.pfUntimely++;
+       usefulPrefetchesUntimely++;
     }
 
     /**

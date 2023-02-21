@@ -102,6 +102,8 @@ class BaseCache(ClockedObject):
     prefetch_on_pf_hit = Param.Bool(False,
         "Notify the hardware prefetcher on hit on prefetched lines")
 
+    tracer = Param.AccessTrace(NULL,"Tracer attached to cache")
+
     tags = Param.BaseTags(BaseSetAssoc(), "Tag store")
     replacement_policy = Param.BaseReplacementPolicy(LRURP(),
         "Replacement policy")
@@ -133,6 +135,8 @@ class BaseCache(ClockedObject):
     # this should be set to True for anything but the last-level
     # cache.
     writeback_clean = Param.Bool(False, "Writeback clean lines")
+
+    enable_bypass = Param.Bool(False, "Enable bypass writeback evictions")
 
     # Control whether this cache should be mostly inclusive or mostly
     # exclusive with respect to upstream caches. The behaviour on a

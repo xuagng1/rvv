@@ -395,6 +395,21 @@ class Packet : public Printable
     /// True if the request targets the secure memory space.
     bool _isSecure;
 
+    // Used to bypass dead blocks
+    bool _isDead;
+
+    // True if the request hits this cache
+    bool _isServedByCache;
+
+    /// True if the prefetch bit is set
+    bool _isPrefetched;
+
+    bool _isTriped;
+
+    bool _isFromPrefetcher;
+
+    int _refCount;
+
     /// The size of the request or transfer.
     unsigned size;
 
@@ -827,6 +842,55 @@ class Packet : public Printable
         return _isSecure;
     }
 
+    bool isDead() const
+    {
+        return _isDead;
+    }
+
+    void setDead() { _isDead = true; }
+
+    void clearDead() { _isDead = false; }
+
+    bool isFromPrefetcher() const
+    {
+        return _isFromPrefetcher;
+    }
+
+    void setFromPrefetcher() { _isFromPrefetcher = true; }
+
+    void clearFromPrefetcher() { _isFromPrefetcher = false; }
+
+    bool isPrefetched() const
+    {
+        return _isPrefetched;
+    }
+
+    void setPrefetched() { _isPrefetched = true; }
+
+    void clearPrefetchedDead() { _isPrefetched = false; }
+
+    bool isTriped() const
+    {
+        return _isTriped;
+    }
+
+    void setTriped() { _isTriped = true; }
+
+    void clearTriped() { _isTriped = false; }
+
+    int getRefCount() { return _refCount; }
+
+    void setRefCount(int r) { _refCount = r; }
+
+    bool isServedByCache() const
+    {
+        return _isServedByCache;
+    }
+
+    void setServedByCache() { _isServedByCache = true;}
+
+    void clearServedByCache() { _isServedByCache = false; }
+
     /**
      * Setting and Getting the flag of whether the packet
      * needs to be sent right away.
@@ -889,7 +953,12 @@ class Packet : public Printable
      */
     Packet(const RequestPtr &_req, MemCmd _cmd)
         :  cmd(_cmd), id((PacketId)_req.get()), req(_req),
-           data(nullptr), addr(0), _isSecure(false), size(0),
+           data(nullptr), addr(0), _isSecure(false),
+           _isDead(false), _isServedByCache(false),
+           _isPrefetched(false), _isTriped(false),
+           _isFromPrefetcher(false),
+           _refCount(0),
+           size(0),
            _qosValue(0),
            htmReturnReason(HtmCacheFailure::NO_FAIL),
            htmTransactionUid(0),
@@ -931,6 +1000,10 @@ class Packet : public Printable
     Packet(const RequestPtr &_req, MemCmd _cmd, int _blkSize, PacketId _id = 0)
         :  cmd(_cmd), id(_id ? _id : (PacketId)_req.get()), req(_req),
            data(nullptr), addr(0), _isSecure(false),
+           _isDead(false), _isServedByCache(false),
+           _isPrefetched(false), _isTriped(false),
+           _isFromPrefetcher(false),
+           _refCount(0),
            _qosValue(0),
            htmReturnReason(HtmCacheFailure::NO_FAIL),
            htmTransactionUid(0),
@@ -957,7 +1030,12 @@ class Packet : public Printable
     Packet(const PacketPtr pkt, bool clear_flags, bool alloc_data)
         :  cmd(pkt->cmd), id(pkt->id), req(pkt->req),
            data(nullptr),
-           addr(pkt->addr), _isSecure(pkt->_isSecure), size(pkt->size),
+           addr(pkt->addr), _isSecure(pkt->_isSecure),
+           _isDead(false), _isServedByCache(false),
+           _isPrefetched(false), _isTriped(false),
+           _isFromPrefetcher(false),
+           _refCount(0),
+           size(pkt->size),
            bytesValid(pkt->bytesValid),
            _qosValue(pkt->qosValue()),
            htmReturnReason(HtmCacheFailure::NO_FAIL),

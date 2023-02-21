@@ -53,6 +53,7 @@
 #include "cpu/o3/thread_context.hh"
 #include "cpu/simple_thread.hh"
 #include "cpu/thread_context.hh"
+#include "debug/AccessTraceInform.hh"
 #include "debug/Activity.hh"
 #include "debug/Commit.hh"
 #include "debug/Drain.hh"
@@ -66,7 +67,6 @@
 #include "sim/process.hh"
 #include "sim/stat_control.hh"
 #include "sim/system.hh"
-
 namespace gem5
 {
 
@@ -1256,6 +1256,7 @@ CPU::instDone(ThreadID tid, const DynInstPtr &inst)
         thread[tid]->comInstEventQueue.serviceEvents(thread[tid]->numInst);
 
         if (this->warmupInstCount && totalInsts() == this->warmupInstCount) {
+            DPRINTFR(AccessTraceInform, "Warmup ended\n");
             fprintf(stderr, "Will trigger stat dump and reset\n");
             Stats::schedStatEvent(true, true, curTick(), 0);
             scheduleInstStop(tid,0,"Will trigger stat dump and reset");

@@ -53,6 +53,7 @@
 #include "base/statistics.hh"
 #include "cpu/o3/dyn_inst_ptr.hh"
 #include "cpu/reg_class.hh"
+#include "cpu/thread_context.hh"
 #include "mem/request.hh"
 #include "params/ElasticTrace.hh"
 #include "proto/inst_dep_record.pb.h"
@@ -178,6 +179,8 @@ class ElasticTrace : public ProbeListenerObject
      * @param head_inst pointer to dynamic instruction to be committed
      */
     void addCommittedInst(const DynInstConstPtr& head_inst);
+
+    void addMemoryAccess(const std::pair<DynInstConstPtr, PacketPtr>& p);
 
     /** Event to trigger registering this listener for all probe points. */
     EventFunctionWrapper regEtraceListenersEvent;
@@ -353,6 +356,9 @@ class ElasticTrace : public ProbeListenerObject
 
     /** Protobuf output stream for instruction fetch trace. */
     ProtoOutputStream* instTraceStream;
+
+    /** Protobuf output stream for instruction fetch trace. */
+    ProtoOutputStream* memoryTraceStream;
 
     /** Number of instructions after which to enable tracing. */
     const InstSeqNum startTraceInst;

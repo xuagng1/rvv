@@ -58,6 +58,7 @@
 #include "enums/Clusivity.hh"
 #include "mem/cache/cache_blk.hh"
 #include "mem/cache/mshr.hh"
+#include "mem/cache/prefetch/base.hh"
 #include "mem/cache/tags/base.hh"
 #include "mem/cache/write_queue_entry.hh"
 #include "mem/request.hh"
@@ -552,6 +553,10 @@ Cache::createMissPacket(PacketPtr cpu_pkt, CacheBlk *blk,
                 __func__, cpu_pkt->print(), pkt->print());
     }
 
+    if (cpu_pkt->isFromPrefetcher()) {
+        pkt->setFromPrefetcher();
+    }
+
     // the packet should be block aligned
     assert(pkt->getAddr() == pkt->getBlockAddr(blkSize));
 
@@ -900,6 +905,7 @@ Cache::serviceMSHRTargets(MSHR *mshr, const PacketPtr pkt, CacheBlk *blk)
           case MSHR::Target::FromPrefetcher:
             assert(tgt_pkt->cmd == MemCmd::HardPFReq);
             from_pref = true;
+            ppFill->notify(tgt_pkt);
 
             delete tgt_pkt;
             break;
@@ -931,6 +937,10 @@ Cache::serviceMSHRTargets(MSHR *mshr, const PacketPtr pkt, CacheBlk *blk)
 
     if (blk && !from_core && from_pref) {
         blk->setPrefetched();
+    }
+
+    if (blk && from_core && from_pref && prefetcher) {
+        BaseCache::prefetcher->pfUntimely();
     }
 
     if (!mshr->hasLockedRMWReadTarget()) {

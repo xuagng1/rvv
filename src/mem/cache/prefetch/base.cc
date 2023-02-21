@@ -63,7 +63,8 @@ Base::PrefetchInfo::PrefetchInfo(PacketPtr pkt, Addr addr, bool miss)
   : address(addr), pc(pkt->req->hasPC() ? pkt->req->getPC() : 0),
     requestorId(pkt->req->requestorId()), validPC(pkt->req->hasPC()),
     secure(pkt->isSecure()), size(pkt->req->getSize()), write(pkt->isWrite()),
-    paddress(pkt->req->getPaddr()), cacheMiss(miss)
+    paddress(pkt->req->getPaddr()), cacheMiss(miss),
+    iside(pkt->req->isInstFetch())
 {
     unsigned int req_size = pkt->req->getSize();
     if (!write && miss) {
@@ -103,7 +104,7 @@ Base::Base(const BasePrefetcherParams &p)
       prefetchOnPfHit(p.prefetch_on_pf_hit),
       useVirtualAddresses(p.use_virtual_addresses),
       prefetchStats(this), issuedPrefetches(0),
-      usefulPrefetches(0), tlb(nullptr)
+      usefulPrefetches(0), usefulPrefetchesUntimely(0), tlb(nullptr)
 {
 }
 
@@ -142,17 +143,28 @@ Base::StatGroup::StatGroup(statistics::Group *parent)
     ADD_STAT(pfHitInWB, statistics::units::Count::get(),
         "number of prefetches hit in the Write Buffer"),
     ADD_STAT(pfLate, statistics::units::Count::get(),
-        "number of late prefetches (hitting in cache, MSHR or WB)")
+        "number of late prefetches (hitting in cache, MSHR or WB)"),
+    ADD_STAT(pfTimely, statistics::units::Count::get(),
+        "number of timely prefetches (hitting in cache)."),
+    ADD_STAT(pfUntimely, statistics::units::Count::get(),
+        "number of untimely prefetches (demand accesses hitting "
+        "in MSHR)."),
+    ADD_STAT(timeliness, statistics::units::Count::get(),
+        "timeliness of this prefetcher")
 {
     using namespace statistics;
 
     pfUnused.flags(nozero);
 
     accuracy.flags(total);
-    accuracy = pfUseful / pfIssued;
+    accuracy = (pfTimely + pfUntimely) / pfIssued;
 
     coverage.flags(total);
-    coverage = pfUseful / (pfUseful + demandMshrMisses);
+    coverage = (pfTimely + pfUntimely) /
+        (pfTimely + pfUntimely + demandMshrMisses);
+
+    timeliness.flags(total);
+    timeliness = pfTimely / (pfTimely + pfUntimely);
 
     pfLate = pfHitInCache + pfHitInMSHR + pfHitInWB;
 }

@@ -88,8 +88,10 @@ BaseCache::BaseCache(const BaseCacheParams &p, unsigned blk_size)
       tags(p.tags),
       compressor(p.compressor),
       prefetcher(p.prefetcher),
+      tracer(p.tracer),
       writeAllocator(p.write_allocator),
       writebackClean(p.writeback_clean),
+      enableBypass(p.enable_bypass),
       tempBlockWriteback(nullptr),
       writebackTempBlockAtomicEvent([this]{ writebackTempBlockAtomic(); },
                                     name(), false,
@@ -130,6 +132,9 @@ BaseCache::BaseCache(const BaseCacheParams &p, unsigned blk_size)
     tags->tagsInit();
     if (prefetcher)
         prefetcher->setCache(this);
+
+    if (tracer)
+        tracer->setCache(this);
 
     fatal_if(compressor && !dynamic_cast<CompressedTags*>(tags),
         "The tags of compressed cache %s must derive from CompressedTags",
@@ -287,6 +292,7 @@ BaseCache::handleTimingReqHit(PacketPtr pkt, CacheBlk *blk, Tick request_time)
         assert(pkt->payloadDelay == 0);
 
         pkt->makeTimingResponse();
+        pkt->setServedByCache();
 
         // In this case we are considering request_time that takes
         // into account the delay of the xbar, if any, and just
@@ -458,6 +464,7 @@ BaseCache::recvTimingReq(PacketPtr pkt)
             DPRINTF(Cache, "Hit on prefetch for addr %#x (%s)\n",
                     pkt->getAddr(), pkt->isSecure() ? "s" : "ns");
             blk->clearPrefetched();
+            prefetcher->pfTimely();
         }
 
         if (blk && blk->needInvalidate()) {
@@ -584,7 +591,7 @@ BaseCache::recvTimingResp(PacketPtr pkt)
             writeAllocator->allocate() : mshr->allocOnFill();
         blk = handleFill(pkt, blk, writebacks, allocate);
         assert(blk != nullptr);
-        ppFill->notify(pkt);
+        //ppFill->notify(pkt);
     }
 
     // Don't want to promote the Locked RMW Read until
@@ -614,6 +621,12 @@ BaseCache::recvTimingResp(PacketPtr pkt)
     serviceMSHRTargets(mshr, pkt, blk);
     // We are stopping servicing targets early for the Locked RMW Read until
     // the write comes.
+    if (is_fill && blk->wasPrefetched()) {
+        blk->decreaseRefCount();
+        if (blk->replacementData)
+            tags->handlePrefetchInsertion(blk, pkt);
+    }
+
     if (!mshr->hasLockedRMWReadTarget()) {
         if (mshr->promoteDeferredTargets()) {
             // avoid later read getting stale data while write miss is
@@ -956,6 +969,7 @@ BaseCache::getNextQueueEntry()
                 // allocate an MSHR and return it, note
                 // that we send the packet straight away, so do not
                 // schedule the send
+                ppPfIssue->notify(pkt);
                 return allocateMissBuffer(pkt, curTick(), false);
             }
         }
@@ -972,6 +986,17 @@ BaseCache::handleEvictions(std::vector<CacheBlk*> &evict_blks,
     for (const auto& blk : evict_blks) {
         if (blk->isValid()) {
             replacement = true;
+
+            stats.refCounts.sample(blk->getRefCount());
+            if (calDead) {
+                if (!blk->deadtrack.trip) {
+                    if (blk->deadtrack.prefetched)
+                        stats.prefetchDeads++;
+                    else
+                        stats.demandDeads++;
+                    stats.deadRefCounts.sample(blk->deadtrack.aboveRefCount);
+                }
+            }
 
             const MSHR* mshr =
                 mshrQueue.findMatch(regenerateBlkAddr(blk), blk->isSecure());
@@ -1355,6 +1380,11 @@ BaseCache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
             return true;
         }
 
+        if (enableBypass && pkt->cmd == MemCmd::WritebackClean && !blk) {
+            if (!pkt -> isTriped() && pkt->isDead())
+                return true;
+        }
+
         const bool has_old_data = blk && blk->isValid();
         if (!blk) {
             // need to do a replacement
@@ -1363,6 +1393,16 @@ BaseCache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
                 // no replaceable block available: give up, fwd to next level.
                 incMissCount(pkt);
                 return false;
+            }
+            if (calDead) {
+                if (pkt->isPrefetched()) {
+                    blk->deadtrack.prefetched = true;
+                }
+                if (pkt->isTriped()) {
+                    stats.writebackTriped++;
+                    blk->deadtrack.trip = true;
+                }
+                blk->deadtrack.aboveRefCount = pkt->getRefCount();
             }
 
             blk->setCoherenceBits(CacheBlk::ReadableBit);
@@ -1563,7 +1603,7 @@ BaseCache::handleFill(PacketPtr pkt, CacheBlk *blk, PacketList &writebacks,
 
         // need to do a replacement if allocating, otherwise we stick
         // with the temporary storage
-        blk = allocate ? allocateBlock(pkt, writebacks) : nullptr;
+        blk = allocate ? allocateBlock(pkt, writebacks, true) : nullptr;
 
         if (!blk) {
             // No replaceable block or a mostly exclusive
@@ -1640,7 +1680,8 @@ BaseCache::handleFill(PacketPtr pkt, CacheBlk *blk, PacketList &writebacks,
 }
 
 CacheBlk*
-BaseCache::allocateBlock(const PacketPtr pkt, PacketList &writebacks)
+BaseCache::allocateBlock(const PacketPtr pkt, PacketList &writebacks,
+                        bool is_fill)
 {
     // Get address
     const Addr addr = pkt->getAddr();
@@ -1685,6 +1726,18 @@ BaseCache::allocateBlock(const PacketPtr pkt, PacketList &writebacks)
 
     // Insert new block at victimized entry
     tags->insertBlock(pkt, victim);
+    stats.allocates++;
+    if (pkt->isPrefetched())
+        stats.allocatedPrefetchs++;
+
+    DPRINTF(CacheRepl, "After Replacement: %s, isTriped: %c\n",
+            victim->print(), victim->wasTriped() ? 'T': 'F');
+
+    // L2 cache receives fill requests from LLC rather than DRAM
+    if (is_fill && pkt->isServedByCache()) {
+        DPRINTF(Cache, "isServedByCache, setTrip:%s \n", victim->print());
+        victim->setTrip();
+    }
 
     // If using a compressor, set compression data. This must be done after
     // insertion, as the compression bit may be set.
@@ -1765,6 +1818,24 @@ BaseCache::writebackBlk(CacheBlk *blk)
 
     pkt->allocate();
     pkt->setDataFromBlock(blk->data, blkSize);
+
+    if (blk->wasPrefetched())
+        stats.writebackPrefetchs++;
+
+    // blk->wasPrefetched()
+    if (writebackClean) {
+        if (!blk->wasTriped() && (blk->getRefCount() <= 1))
+            pkt->setDead();
+
+        if (blk->wasPrefetched())
+            pkt->setPrefetched();
+
+        if (blk->wasTriped()) {
+            pkt->setTriped();
+        }
+
+        pkt->setRefCount(blk->getRefCount());
+    }
 
     // When a block is compressed, it must first be decompressed before being
     // sent for writeback.
@@ -2316,8 +2387,17 @@ BaseCache::CacheStats::CacheStats(BaseCache &c)
              "number of data expansions"),
     ADD_STAT(dataContractions, statistics::units::Count::get(),
              "number of data contractions"),
+    ADD_STAT(refCounts, statistics::units::Count::get(),
+             "number of reference counters"),
+    ADD_STAT(deadRefCounts, statistics::units::Count::get(),
+             "number of reference counters of dead blocks"),
+    ADD_STAT(liveRefCounts, statistics::units::Count::get(),
+             "number of reference counters of dead blocks"),
     cmd(MemCmd::NUM_MEM_CMDS)
 {
+    refCounts.init(0, 10, 1).flags(gem5::statistics::pdf);
+    deadRefCounts.init(0, 10, 1).flags(gem5::statistics::pdf);
+    liveRefCounts.init(0, 10, 1).flags(gem5::statistics::pdf);
     for (int idx = 0; idx < MemCmd::NUM_MEM_CMDS; ++idx)
         cmd[idx].reset(new CacheCmdStats(c, MemCmd(idx).toString()));
 }
@@ -2553,8 +2633,10 @@ BaseCache::regProbePoints()
     ppHit = new ProbePointArg<PacketPtr>(this->getProbeManager(), "Hit");
     ppMiss = new ProbePointArg<PacketPtr>(this->getProbeManager(), "Miss");
     ppFill = new ProbePointArg<PacketPtr>(this->getProbeManager(), "Fill");
-    ppDataUpdate =
-        new ProbePointArg<DataUpdate>(this->getProbeManager(), "Data Update");
+    ppPfIssue = new ProbePointArg<PacketPtr>(this->getProbeManager(),
+                                            "Prefetch");
+    ppDataUpdate = new ProbePointArg<DataUpdate>(this->getProbeManager(),
+                                                "Data Update");
 }
 
 ///////////////

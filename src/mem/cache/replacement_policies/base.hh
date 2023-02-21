@@ -95,6 +95,14 @@ class Base : public SimObject
     virtual void reset(const std::shared_ptr<ReplacementData>&
         replacement_data) const = 0;
 
+    virtual void prefetchInsertion(const std::shared_ptr<ReplacementData>&
+        replacement_data, const PacketPtr pkt)
+    {
+        prefetchInsertion(replacement_data);
+    }
+    virtual void prefetchInsertion(const std::shared_ptr<ReplacementData>&
+        replacement_data) const = 0;
+
     /**
      * Find replacement victim among candidates.
      *

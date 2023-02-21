@@ -1,7 +1,14 @@
-# -*- mode:python -*-
-
-# Copyright (c) 2018 Inria
+# Copyright (c) 2013 ARM Limited
 # All rights reserved.
+#
+# The license below extends only to copyright in the software and shall
+# not be construed as granting a license to any other intellectual
+# property including but not limited to intellectual property relating
+# to a hardware implementation of the functionality of the software
+# licensed hereunder.  You may use the software subject to the license
+# terms below provided that you ensure that this notice is replicated
+# unmodified and in its entirety in all distributions of the software,
+# modified or unmodified, in source code or in binary form.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -26,26 +33,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Import('*')
 
-SimObject('ReplacementPolicies.py', sim_objects=[
-    'BaseReplacementPolicy', 'DuelingRP', 'FIFORP', 'SecondChanceRP',
-    'LFURP', 'LRURP', 'BIPRP', 'MRURP', 'RandomRP', 'BRRIPRP', 'SHiPRP',
-    'SHiPMemRP', 'SHiPPCRP', 'TreePLRURP', 'WeightedLRURP', 'NRFRP', 'PAWRP'])
+from m5.objects.ClockedObject import ClockedObject
 
-Source('bip_rp.cc')
-Source('brrip_rp.cc')
-Source('dueling_rp.cc')
-Source('fifo_rp.cc')
-Source('lfu_rp.cc')
-Source('lru_rp.cc')
-Source('mru_rp.cc')
-Source('random_rp.cc')
-Source('second_chance_rp.cc')
-Source('ship_rp.cc')
-Source('tree_plru_rp.cc')
-Source('weighted_lru_rp.cc')
-Source('nrf_rp.cc')
-Source('paw_rp.cc')
-
-GTest('replaceable_entry.test', 'replaceable_entry.test.cc')
+class AccessTrace(ClockedObject):
+    type = 'AccessTrace'
+    cxx_class = 'gem5::AccessTrace'
+    cxx_header = 'mem/probes/access_trace.hh'

@@ -97,6 +97,21 @@ class BRRIPRP(BaseReplacementPolicy):
     btp = Param.Percent(3,
         "Percentage of blocks to be inserted with long RRPV")
 
+class NRFRP(BRRIPRP):
+    type = 'NRFRP'
+    cxx_class = 'gem5::replacement_policy::NRF'
+    cxx_header = "mem/cache/replacement_policies/nrf_rp.hh"
+    btp = 0
+    hit_priority = True
+    num_bits = 2
+
+class PAWRP(BRRIPRP):
+    type = 'PAWRP'
+    cxx_class = 'gem5::replacement_policy::PAW'
+    cxx_header = "mem/cache/replacement_policies/paw_rp.hh"
+    hit_priority = True
+    num_bits = 2
+
 class RRIPRP(BRRIPRP):
     btp = 100
 

@@ -213,6 +213,8 @@ def config_cache(options, system):
                 system.membus.cpu_side_ports, system.membus.mem_side_ports)
         else:
             system.cpu[i].connectBus(system.membus)
+        if options.l3cache and options.l2cache and options.caches:
+            system.cpu[i].bindCache(dcache, system.l2, system.l3)
 
     return system
 
