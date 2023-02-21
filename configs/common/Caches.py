@@ -68,7 +68,7 @@ class L1_ICache(L1Cache):
 class L1_DCache(L1Cache):
     mshrs = 16
     # always writeback clean when lower level is exclusive
-    writeback_clean = True
+    # writeback_clean = True
 
     # aligned latency:
     tag_latency = 1
@@ -76,11 +76,12 @@ class L1_DCache(L1Cache):
     sequential_access = False
     # This is communication latency between l1 & l2
     response_latency = 4
+    replacement_policy = TreePLRURP()
 
 class L2Cache(Cache):
     mshrs = 32
     tgts_per_mshr = 20
-    clusivity='mostly_excl'
+    clusivity='mostly_incl'
     prefetch_on_access = True
     # always writeback clean when lower level is exclusive
     writeback_clean = True
@@ -92,6 +93,7 @@ class L2Cache(Cache):
 
     # This is communication latency between l2 & l3
     response_latency = 15
+    replacement_policy = PAWRP()
 
 class L3Cache(Cache):
     mshrs = 64
@@ -106,6 +108,7 @@ class L3Cache(Cache):
 
     # This is L3 miss latency, which act as padding for memory controller
     response_latency = 112
+    replacement_policy = NRFRP()
 
 class IOCache(Cache):
     assoc = 8
