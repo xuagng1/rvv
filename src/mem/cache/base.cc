@@ -69,6 +69,7 @@
 namespace gem5
 {
 
+std::vector<prefetch::Base *> prefetcher_array;
 BaseCache::CacheResponsePort::CacheResponsePort(const std::string &_name,
                                           BaseCache *_cache,
                                           const std::string &_label)
@@ -83,6 +84,7 @@ BaseCache::BaseCache(const BaseCacheParams &p, unsigned blk_size)
     : ClockedObject(p),
       cpuSidePort (p.name + ".cpu_side_port", this, "CpuSidePort"),
       memSidePort(p.name + ".mem_side_port", this, "MemSidePort"),
+      level(p.level),
       mshrQueue("MSHRs", p.mshrs, 0, p.demand_mshr_reserve, p.name),
       writeBuffer("write buffer", p.write_buffers, p.mshrs, p.name),
       tags(p.tags),
@@ -118,6 +120,17 @@ BaseCache::BaseCache(const BaseCacheParams &p, unsigned blk_size)
       system(p.system),
       stats(*this)
 {
+    if (level != -1){
+        if (prefetcher_array.size() > level){
+            prefetcher_array[level] = prefetcher;
+        }
+        else{
+            while (prefetcher_array.size() < level){
+                prefetcher_array.push_back(nullptr);
+            }
+            prefetcher_array.push_back(prefetcher);
+        }
+    }
     // the MSHR queue has no reserve entries as we check the MSHR
     // queue on every single allocation, whereas the write queue has
     // as many reserve entries as we have MSHRs, since every MSHR may
@@ -2053,7 +2066,7 @@ BaseCache::sendMSHRQueuePacket(MSHR* mshr)
         // point
         bool pending_modified_resp = !pkt->hasSharers() &&
             pkt->cacheResponding();
-        markInService(mshr, pending_modified_resp);
+        markInService(mshr, pending_modified_resp);      
 
         if (pkt->isClean() && blk && blk->isSet(CacheBlk::DirtyBit)) {
             // A cache clean opearation is looking for a dirty

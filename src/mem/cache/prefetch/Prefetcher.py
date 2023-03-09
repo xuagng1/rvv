@@ -491,6 +491,14 @@ class SignaturePathPrefetcherV2(SignaturePathPrefetcher):
     global_history_register_replacement_policy = Param.BaseReplacementPolicy(
         LRURP(), "Replacement policy of the global history register")
 
+class SignaturePathPrefetcherV3(SignaturePathPrefetcher):
+    type = 'SignaturePathPrefetcherV3'
+    cxx_class = 'gem5::prefetch::SignaturePathV3'
+    cxx_header = "mem/cache/prefetch/signature_path_v3.hh"
+
+    cross_level_prefetch_threshold = Param.Float(0.9,
+        "Minimum confidence to prefetch to L2 cache")
+
 class AccessMapPatternMatching(ClockedObject):
     type = 'AccessMapPatternMatching'
     cxx_class = 'gem5::prefetch::AccessMapPatternMatching'
@@ -761,16 +769,17 @@ class XiangshanPrefetcher(QueuedPrefetcher):
 
     prefetch_on_pf_hit = True
 
+class AssistPrefetcher(QueuedPrefetcher):
+    type = 'AssistPrefetcher'
+    cxx_class = 'gem5::prefetch::Assist'
+    cxx_header = "mem/cache/prefetch/assist.hh"
+
 class MultiPrefetcher(BasePrefetcher):
     type = 'MultiPrefetcher'
     cxx_class = 'gem5::prefetch::Multi'
     cxx_header = 'mem/cache/prefetch/multi.hh'
 
-    use_virtual_addresses = True
+    prefetch_on_access = True
     prefetch_on_pf_hit = True
-    on_read = True
-    on_write = False
-    on_data  = True
-    on_inst  = False
 
-    prefetchers = VectorParam.BasePrefetcher([], "Array of prefetchers")
+    prefetchers = VectorParam.BasePrefetcher([SignaturePathPrefetcher(), SMSPrefetcher()], "Array of prefetchers")

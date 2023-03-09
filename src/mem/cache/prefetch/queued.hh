@@ -198,10 +198,20 @@ class Queued : public Base
 
     void notify(const PacketPtr &pkt, const PrefetchInfo &pfi) override;
 
+    void notifyCross(const PacketPtr &pkt, const PrefetchInfo &pfi,
+        std::vector<AddrPriority> addresses) override;
+
     void insert(const PacketPtr &pkt, PrefetchInfo &new_pfi, int32_t priority);
 
     virtual void calculatePrefetch(const PrefetchInfo &pfi,
-                                   std::vector<AddrPriority> &addresses) = 0;
+                                   std::vector<AddrPriority> &addresses) {};
+
+    virtual void calculatePrefetch(const PacketPtr &pkt,
+                                    const PrefetchInfo &pfi,
+                                    std::vector<AddrPriority> &addresses){
+        calculatePrefetch(pfi,addresses);
+    };
+
     PacketPtr getPacket() override;
 
     Tick nextPrefetchReadyTime() const override

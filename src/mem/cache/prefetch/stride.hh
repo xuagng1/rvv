@@ -126,7 +126,7 @@ class Stride : public Queued
         {
         }
     } pcTableInfo;
-
+    
     int filled;
 
     const int adjustInterval;

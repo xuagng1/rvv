@@ -55,6 +55,7 @@ class L1Cache(Cache):
     tgts_per_mshr = 20
 
 class L1_ICache(L1Cache):
+    level = 1
     mshrs = 2
     is_read_only = True
     # Writeback clean lines as well
@@ -66,6 +67,7 @@ class L1_ICache(L1Cache):
     response_latency = 4
 
 class L1_DCache(L1Cache):
+    level = 1
     mshrs = 16
     # always writeback clean when lower level is exclusive
     # writeback_clean = True
@@ -79,6 +81,7 @@ class L1_DCache(L1Cache):
     replacement_policy = TreePLRURP()
 
 class L2Cache(Cache):
+    level = 2
     mshrs = 32
     tgts_per_mshr = 20
     clusivity='mostly_incl'
@@ -94,8 +97,10 @@ class L2Cache(Cache):
     # This is communication latency between l2 & l3
     response_latency = 15
     replacement_policy = PAWRP()
+    tracer = AccessTrace()
 
 class L3Cache(Cache):
+    level = 3
     mshrs = 64
     tgts_per_mshr = 20
     clusivity='mostly_excl'
@@ -109,6 +114,7 @@ class L3Cache(Cache):
     # This is L3 miss latency, which act as padding for memory controller
     response_latency = 112
     replacement_policy = NRFRP()
+    prefetcher = AssistPrefetcher()
 
 class IOCache(Cache):
     assoc = 8

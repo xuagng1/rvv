@@ -106,7 +106,7 @@ StreamTAGE::lookupHelper(bool flag, Addr last_chunk_start, Addr stream_start,
 
     std::string buf1;
     boost::to_string(history, buf1);
-    DPRINTF(DecoupleBP || debugFlagOn, "history: %s\n", buf1.c_str());
+    DPRINTF(DecoupleBP, "history: %s\n", buf1.c_str());
 
     for (int i = numPredictors - 1; i >= 0; --i) {
         Addr tmp_index = getTageIndex(last_chunk_start, history, i, index_folded_hist);
@@ -114,7 +114,7 @@ StreamTAGE::lookupHelper(bool flag, Addr last_chunk_start, Addr stream_start,
         auto &way = tageTable[i][tmp_index];
         bool match = way.valid && matchTag(tmp_tag, way.tag, i);
 
-        DPRINTF(DecoupleBP || debugFlagOn,
+        DPRINTF(DecoupleBP,
                 "TAGE table[%u] index[%u], valid: %i, expected tag: %#lx, "
                 "found tag: %#lx, match: %i, useful: %i, start: %#lx, taken@%#lx->%#lx, end_type:%d\n",
                 i, tmp_index, way.valid, tmp_tag, way.tag, match, way.useful, way.target.bbStart,
@@ -131,19 +131,19 @@ StreamTAGE::lookupHelper(bool flag, Addr last_chunk_start, Addr stream_start,
                 main_table = i;
                 main_table_index = tmp_index;
                 ++provider_counts;
-                DPRINTFR(DecoupleBP || debugFlagOn, ", is use as main pred\n");
+                DPRINTFR(DecoupleBP, ", is use as main pred\n");
             } else if (provider_counts == 1) {
                 alt_target = &way.target;
                 alt_table = i;
                 alt_table_index = tmp_index;
                 ++provider_counts;
-                DPRINTFR(DecoupleBP || debugFlagOn, ", is use as alt pred\n");
+                DPRINTFR(DecoupleBP, ", is use as alt pred\n");
                 break;
             }
         } else if (!match) {
-            DPRINTFR(DecoupleBP || debugFlagOn, ", but exclude caz tag mismatch\n");
+            DPRINTFR(DecoupleBP, ", but exclude caz tag mismatch\n");
         } else {
-            DPRINTFR(DecoupleBP || debugFlagOn,
+            DPRINTFR(DecoupleBP,
                     ", but exclude because chunk start %#lx not in stream %#lx-%#lx\n",
                     last_chunk_start, way.target.bbStart,
                     way.target.controlAddr);
@@ -163,13 +163,13 @@ StreamTAGE::lookupHelper(bool flag, Addr last_chunk_start, Addr stream_start,
         if (provider_counts > 1 &&
             useAlt[computeAltSelHash(stream_start, history)] > 0 &&
             main_target->hysteresis == 0) {
-            DPRINTF(DecoupleBP || debugFlagOn,
+            DPRINTF(DecoupleBP,
                     "Use alt predictor table[%d] index[%d]\n", alt_table,
                     alt_table_index);
             use_alt_pred = true;
             dbpstats.providerTableDist.sample(alt_table);
         } else {
-            DPRINTF(DecoupleBP || debugFlagOn,
+            DPRINTF(DecoupleBP,
                     "Use main predictor table[%d] index[%d]\n", main_table,
                     main_table_index);
             use_alt_pred = false;
@@ -235,7 +235,7 @@ StreamTAGE::putPCHistory(Addr cur_chunk_start, Addr stream_start, const bitset &
     if (stream_start == ObservingPC || stream_start == ObservingPC2) {
         debugFlagOn = true;
     }
-    DPRINTF(DecoupleBP || debugFlagOn,
+    DPRINTF(DecoupleBP,
             "Predict for stream %#lx, chunk: %#lx\n", stream_start,
             cur_chunk_start);
 
@@ -254,23 +254,23 @@ StreamTAGE::putPCHistory(Addr cur_chunk_start, Addr stream_start, const bitset &
             target = alt_target;
             main_table_index = alt_table_index;
             main_table = alt_table;
-            DPRINTF(DecoupleBP || debugFlagOn, "use alt loop prediction\n");
+            DPRINTF(DecoupleBP, "use alt loop prediction\n");
         } else {
-            DPRINTF(DecoupleBP || debugFlagOn, "use main loop prediction\n");
+            DPRINTF(DecoupleBP, "use main loop prediction\n");
         }
     } else {
         if (use_alt_pred) {
             target = alt_target;
             main_table_index = alt_table_index;
             main_table = alt_table;
-            DPRINTF(DecoupleBP || debugFlagOn, "use alt prediction\n");
+            DPRINTF(DecoupleBP, "use alt prediction\n");
         } else {
-            DPRINTF(DecoupleBP || debugFlagOn, "use main prediction\n");
+            DPRINTF(DecoupleBP, "use main prediction\n");
         }
     }
     
     if (!found) {
-        DPRINTF(DecoupleBP || debugFlagOn,
+        DPRINTF(DecoupleBP,
                 "not found for stream=%#lx, chunk=%#lx, guess an unlimited stream\n",
                 stream_start, cur_chunk_start);
         prediction.valid = false;
@@ -282,7 +282,7 @@ StreamTAGE::putPCHistory(Addr cur_chunk_start, Addr stream_start, const bitset &
     } else {
         bool loopValid = loopPredictor->loopValid();
         auto& way = tageTable[main_table][main_table_index];
-        DPRINTF(DecoupleBP || debugFlagOn,
+        DPRINTF(DecoupleBP,
                 "use loop prediction: %d, Valid: %d, chunkStart: %#lx, stream: [%#lx-%#lx] -> %#lx, taken: %i\n",
                 useLoopPrediction && loopValid, way.valid, cur_chunk_start, stream_start,
                 target->controlAddr, useLoopPrediction && loopValid ? loopPredAddr : target->nextStream, target->isTaken());
@@ -351,7 +351,7 @@ StreamTAGE::update(Addr last_chunk_start, Addr stream_start_pc,
                  last_chunk_start);
     }
     if (actually_taken && (control_pc < stream_start_pc)) {
-        DPRINTF(DecoupleBP || debugFlagOn,
+        DPRINTF(DecoupleBP,
                 "Control PC %#lx is before stream start %#lx, ignore it\n",
                 control_pc,
                 stream_start_pc);
@@ -386,7 +386,7 @@ StreamTAGE::update(Addr last_chunk_start, Addr stream_start_pc,
         target_sel = main_target;
     }
 
-    DPRINTF(DecoupleBP || debugFlagOn,
+    DPRINTF(DecoupleBP,
             "Update for stream %#lx, chunk:%#lx, predictor_found: %d, use_alt_pred: %d, pred_count: %d\n",
             stream_start_pc, last_chunk_start, predictor_found, use_alt_pred, pred_count);
 
@@ -398,12 +398,12 @@ StreamTAGE::update(Addr last_chunk_start, Addr stream_start_pc,
         bool main_match = pred_match(*main_target);
         bool alt_match = alt_target && pred_match(*alt_target);
 
-        DPRINTF(DecoupleBP || debugFlagOn,
+        DPRINTF(DecoupleBP,
                 "Previous main pred: [%#lx-%#lx] -> %#lx, taken: %i\n",
                 main_target->bbStart, main_target->controlAddr,
                 main_target->nextStream, main_target->isTaken());
         if (alt_target) {
-            DPRINTF(DecoupleBP || debugFlagOn,
+            DPRINTF(DecoupleBP,
                     "Previous alt pred: [%#lx-%#lx] -> %#lx, taken: %i\n",
                     alt_target->bbStart, alt_target->controlAddr,
                     alt_target->nextStream, alt_target->isTaken());
@@ -415,12 +415,12 @@ StreamTAGE::update(Addr last_chunk_start, Addr stream_start_pc,
             auto &alt_entry = useAlt[computeAltSelHash(stream_start_pc, history)];
             if (!main_match) {
                 satIncrement(8, alt_entry);
-                DPRINTF(DecoupleBP || debugFlagOn,
+                DPRINTF(DecoupleBP,
                          "Increment alt choice counter to %d\n",
                          alt_entry);
             } else {
                 satDecrement(-7, alt_entry);
-                DPRINTF(DecoupleBP || debugFlagOn,
+                DPRINTF(DecoupleBP,
                          "Decrement alt choice counter to %d\n",
                          alt_entry);
             }
@@ -429,12 +429,12 @@ StreamTAGE::update(Addr last_chunk_start, Addr stream_start_pc,
         if (pred_match(*main_target)) {
             // inc main entry confidence
             satIncrement(*main_target);
-            DPRINTF(DecoupleBP || debugFlagOn,
+            DPRINTF(DecoupleBP,
                      "Increment conf to %d for table[%d] index[%d]\n",
                      main_target->hysteresis, main_table, main_table_index);
         } else {
             satDecrement(*main_target);
-            DPRINTF(DecoupleBP || debugFlagOn,
+            DPRINTF(DecoupleBP,
                      "Decrement conf to %d for table[%d] index[%d]\n",
                      main_target->hysteresis, main_table, main_table_index);
         }
@@ -444,7 +444,7 @@ StreamTAGE::update(Addr last_chunk_start, Addr stream_start_pc,
             bool no_alt = pred_count == 1;
             bool main_neq_alt = (pred_count > 1) && !pred_match(*alt_target);
             if (no_alt || main_neq_alt) {
-                DPRINTF(DecoupleBP || debugFlagOn,
+                DPRINTF(DecoupleBP,
                          "mark table[%d] index[%d] as useful\n",
                          main_table, main_table_index);
                 main_entry.useful = 1;
@@ -476,12 +476,12 @@ StreamTAGE::update(Addr last_chunk_start, Addr stream_start_pc,
         uint32_t new_tag =
             getTageTag(stream_start_pc, history, start_table, stream_tagFoldedHist);
         auto &entry = tageTable[start_table][new_index];
-        DPRINTF(DecoupleBP || debugFlagOn,
+        DPRINTF(DecoupleBP,
                 "Table %d index[%d] histlen=%u is %s\n", start_table,
                 new_index, histLengths[start_table], entry.useful ? "useful" : "not useful");
 
         if (!entry.useful) {
-            DPRINTF(DecoupleBP || debugFlagOn,
+            DPRINTF(DecoupleBP,
                     "%s %#lx-%#lx -> %#lx with %#lx-%#lx -> %#lx, new "
                     "tag=%#lx, end type=%i\n", entry.valid ? "Replacing": "Allocating",
                     entry.target.bbStart, entry.target.controlAddr,

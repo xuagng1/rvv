@@ -118,18 +118,18 @@ StreamLoopDetector::update(Addr branchAddr, Addr targetAddr, Addr fallThruPC) {
     if (entry != loopTable.end()) {
         entry->second.age = 3;
         if (!adjustLoopEntry(taken_backward, entry->second, branchAddr, targetAddr)) {
-            DPRINTF(DecoupleBP || debugFlagOn, "%#lx is not a loop\n", branchAddr);
+            DPRINTF(DecoupleBP, "%#lx is not a loop\n", branchAddr);
             return;
         }
     }
 
     if (taken_backward) {
         if (entry == loopTable.end()) {
-            DPRINTF(DecoupleBP || debugFlagOn, "taken update loop detector from NULL to [%#lx, %#lx, %#lx, %d, %d, %#lx]\n",
+            DPRINTF(DecoupleBP, "taken update loop detector from NULL to [%#lx, %#lx, %#lx, %d, %d, %#lx]\n",
                     branchAddr, 0, 0, 1, 0, fallThruPC);
             insertEntry(branchAddr, DetectorEntry(branchAddr, targetAddr, fallThruPC));
         } else {
-            DPRINTF(DecoupleBP || debugFlagOn, "taken update loop detector from "
+            DPRINTF(DecoupleBP, "taken update loop detector from "
                     "[%#lx, %#lx, %#lx, %d, %d, %#lx] to [%#lx, %#lx, %#lx, %d, %d, %#lx]\n",
                     branchAddr, entry->second.target, entry->second.outTarget, entry->second.specCount, entry->second.tripCount, entry->second.fallThruPC,
                     branchAddr, entry->second.target, entry->second.outTarget, entry->second.specCount + 1, entry->second.tripCount, entry->second.fallThruPC);
@@ -143,7 +143,7 @@ StreamLoopDetector::update(Addr branchAddr, Addr targetAddr, Addr fallThruPC) {
 
     } else {
         assert(entry != loopTable.end());
-        DPRINTF(DecoupleBP || debugFlagOn, "not taken update loop detector from "
+        DPRINTF(DecoupleBP, "not taken update loop detector from "
                 "[%#lx, %#lx, %#lx, %d, %d, %#lx] to [%#lx, %#lx, %#lx, %d, %d, %#lx]\n",
                 branchAddr, entry->second.target, entry->second.outTarget, entry->second.specCount, entry->second.tripCount, entry->second.fallThruPC,
                 branchAddr, entry->second.target, entry->second.outTarget, 0, entry->second.specCount, entry->second.fallThruPC);
@@ -168,7 +168,7 @@ StreamLoopDetector::update(Addr branchAddr, Addr targetAddr, Addr fallThruPC) {
         entry->second.target < forwardTaken.first &&
         entry->second.branch > forwardTaken.first) {
         entry->second.intraTaken = true;
-        DPRINTF(DecoupleBP || debugFlagOn,
+        DPRINTF(DecoupleBP,
                 "Detect intra taken at %#lx-->%#lx, loop:[%#lx, %#lx]\n",
                 forwardTaken.first, forwardTaken.second, entry->second.target,
                 entry->second.branch);

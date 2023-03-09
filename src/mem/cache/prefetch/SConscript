@@ -38,7 +38,8 @@ SimObject('Prefetcher.py', sim_objects=[
     'DeltaCorrelatingPredictionTables', 'DCPTPrefetcher',
     'IrregularStreamBufferPrefetcher', 'SlimAMPMPrefetcher',
     'BOPPrefetcher', 'XiangshanPrefetcher', 'StreamPrefetcher',
-    'SBOOEPrefetcher', 'STeMSPrefetcher', 'PIFPrefetcher'])
+    'SBOOEPrefetcher', 'STeMSPrefetcher', 'PIFPrefetcher',
+    'AssistPrefetcher','SignaturePathPrefetcherV3'])
 
 
 DebugFlag('BOPPrefetcher')
@@ -66,3 +67,5 @@ Source('tagged.cc')
 Source('ipcp.cc')
 Source('stream.cc')
 Source('xiangshan.cc')
+Source('assist.cc')
+Source('signature_path_v3.cc')

@@ -181,7 +181,7 @@ class DecoupledBPUWithFTB : public BPredUnit
     DefaultFTB *uftb{};
     DefaultFTB *ftb{};
     FTBTAGE *tage{};
-    FTBITTAGE *ittage{};
+    FTBITTAGE*ittage{};
     
     ftb_pred::RAS *ras{};
 

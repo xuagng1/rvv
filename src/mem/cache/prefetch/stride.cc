@@ -136,6 +136,8 @@ Stride::calculatePrefetch(const PrefetchInfo &pfi,
     bool is_secure = pfi.isSecure();
     RequestorID requestor_id = useRequestorId ? pfi.getRequestorId() : 0;
 
+    
+
     // Get corresponding pc table
     PCTable* pcTable = findTable(requestor_id);
 
@@ -205,8 +207,7 @@ Stride::notifyFill(const PacketPtr& pkt)
 
     filled++;
     if (filled >= adjustInterval) {
-        double accuracy = (double) usefulPrefetches
-                            / issuedPrefetches;
+        double accuracy = (double) usefulPrefetches / (double) issuedPrefetches;
         if (accuracy > 0.5 && currentDegree < maxDegree) {
             currentDegree++;
         }

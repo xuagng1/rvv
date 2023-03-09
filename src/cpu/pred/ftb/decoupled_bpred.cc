@@ -385,7 +385,7 @@ DecoupledBPUWithFTB::controlSquash(unsigned target_id, unsigned stream_id,
         assert(!fetchStreamQueue.empty());
         // assert(fetchStreamQueue.rbegin()->second.getNextStreamStart() == MaxAddr);
         DPRINTF(
-            DecoupleBP || debugFlagOn,
+            DecoupleBP,
             "The squashing stream is insane, ignore squash on it");
         return;
     }
@@ -409,7 +409,7 @@ DecoupledBPUWithFTB::controlSquash(unsigned target_id, unsigned stream_id,
             "stream start=%#lx, predict on hist: %s\n", stream.startPC,
             stream.history);
 
-    DPRINTF(DecoupleBP || debugFlagOn,
+    DPRINTF(DecoupleBP,
             "Control squash: ftq_id=%lu, fsq_id=%lu,"
             " control_pc=%#lx, corr_target=%#lx, is_conditional=%u, "
             "is_indirect=%u, actually_taken=%u, branch seq: %lu\n",
@@ -540,7 +540,7 @@ DecoupledBPUWithFTB::trapSquash(unsigned target_id, unsigned stream_id,
                          ThreadID tid)
 {
     dbpFtbStats.trapSquash++;
-    DPRINTF(DecoupleBP || debugFlagOn,
+    DPRINTF(DecoupleBP,
             "Trap squash: target id: %lu, stream id: %lu, inst_pc: %#lx\n",
             target_id, stream_id, inst_pc.instAddr());
     squashing = true;
@@ -606,7 +606,7 @@ void DecoupledBPUWithFTB::update(unsigned stream_id, ThreadID tid)
                 it->first);
         bool miss_predicted = stream.squashType == SQUASH_CTRL;
         if (miss_predicted) {
-            DPRINTF(FTBITTAGE || (stream.squashPC == 0x1e0eb6), "miss predicted stream.startAddr=%#lx\n", stream.startPC);
+            DPRINTF(FTBITTAGE|| (stream.squashPC == 0x1e0eb6), "miss predicted stream.startAddr=%#lx\n", stream.startPC);
         }
         if (miss_predicted && stream.exeBranchInfo.isIndirect) {
             topMispredIndirect[stream.startPC]++;
@@ -617,7 +617,7 @@ void DecoupledBPUWithFTB::update(unsigned stream_id, ThreadID tid)
         // if (stream.exeBranchPC == ObservingPC2) {
         //     debugFlagOn = true;
         // }
-        DPRINTF(DecoupleBP || debugFlagOn,
+        DPRINTF(DecoupleBP,
                 "Commit stream start %#lx, which is %s predicted, "
                 "final br addr: %#lx, final target: %#lx, pred br addr: %#lx, "
                 "pred target: %#lx\n",
@@ -671,7 +671,7 @@ void DecoupledBPUWithFTB::update(unsigned stream_id, ThreadID tid)
             //     } else {
             //         misPredTripCount[stream.tripCount]++;
             //     }
-            //     DPRINTF(DecoupleBP || debugFlagOn, "commit mispredicted stream %lu\n", it->first);
+            //     DPRINTF(DecoupleBP, "commit mispredicted stream %lu\n", it->first);
             // }
         }
 
@@ -754,7 +754,7 @@ DecoupledBPUWithFTB::tryEnqFetchStream()
         bool should_create_new_stream = true;
         makeNewPrediction(should_create_new_stream);
     } else {
-        DPRINTF(DecoupleBP || debugFlagOn, "FSQ is full: %lu\n",
+        DPRINTF(DecoupleBP, "FSQ is full: %lu\n",
                 fetchStreamQueue.size());
     }
     for (int i = 0; i < numStages; i++) {
@@ -762,7 +762,7 @@ DecoupledBPUWithFTB::tryEnqFetchStream()
     }
     receivedPred = false;
     DPRINTF(Override, "In tryFetchEnqStream(), receivedPred reset to false.\n");
-    DPRINTF(DecoupleBP || debugFlagOn, "fsqId=%lu\n", fsqId);
+    DPRINTF(DecoupleBP, "fsqId=%lu\n", fsqId);
 }
 
 void
@@ -880,7 +880,7 @@ DecoupledBPUWithFTB::makeNewPrediction(bool create_new_stream)
     if (finalPred.controlAddr() == ObservingPC || finalPred.controlAddr() == ObservingPC2) {
         debugFlagOn = true;
     }
-    DPRINTF(DecoupleBP || debugFlagOn, "Make pred with %s, pred valid: %i, taken: %i\n",
+    DPRINTF(DecoupleBP, "Make pred with %s, pred valid: %i, taken: %i\n",
              create_new_stream ? "new stream" : "last missing stream",
              finalPred.valid, finalPred.isTaken());
 
@@ -901,7 +901,7 @@ DecoupledBPUWithFTB::makeNewPrediction(bool create_new_stream)
         }
         s0PC = nextPC;
     } else {
-        DPRINTF(DecoupleBP || debugFlagOn, "Prediction is not reasonable, printing ftb entry\n");
+        DPRINTF(DecoupleBP, "Prediction is not reasonable, printing ftb entry\n");
         ftb->printFTBEntry(finalPred.ftbEntry);
         dbpFtbStats.predFalseHit++;
         // prediction is not reasonable, use fall through
@@ -940,7 +940,7 @@ DecoupledBPUWithFTB::makeNewPrediction(bool create_new_stream)
     assert(inserted);
 
     dumpFsq("after insert new stream");
-    DPRINTF(DecoupleBP || debugFlagOn, "Insert fetch stream %lu\n", fsqId);
+    DPRINTF(DecoupleBP, "Insert fetch stream %lu\n", fsqId);
 
     fsqId++;
     printStream(entry);

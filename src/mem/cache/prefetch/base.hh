@@ -388,6 +388,7 @@ class Base : public ClockedObject
     BaseTLB * tlb;
 
   public:
+    using AddrPriority = std::pair<Addr, int32_t>;
     Base(const BasePrefetcherParams &p);
     virtual ~Base() = default;
 
@@ -398,6 +399,9 @@ class Base : public ClockedObject
      * misses, depending on cache parameters.)
      */
     virtual void notify(const PacketPtr &pkt, const PrefetchInfo &pfi) = 0;
+
+    virtual void notifyCross(const PacketPtr &pkt, const PrefetchInfo &pfi,
+        std::vector<AddrPriority> addresses) {};
 
     /** Notify prefetcher of cache fill */
     virtual void notifyFill(const PacketPtr &pkt)

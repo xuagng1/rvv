@@ -91,6 +91,7 @@ class MSHR;
 class RequestPort;
 class QueueEntry;
 struct BaseCacheParams;
+extern std::vector<prefetch::Base *> prefetcher_array;
 
 /**
  * A basic cache interface. Implements some common functions for speed.
@@ -342,6 +343,9 @@ class BaseCache : public ClockedObject
     MemSidePort memSidePort;
 
   protected:
+
+    /** Cache Level */
+    const unsigned level;
 
     /** Miss status registers */
     MSHRQueue mshrQueue;
@@ -1210,6 +1214,10 @@ class BaseCache : public ClockedObject
     getBlockSize() const
     {
         return blkSize;
+    }
+
+    unsigned getLevel() {
+        return level;
     }
 
     const AddrRangeList &getAddrRanges() const { return addrRanges; }

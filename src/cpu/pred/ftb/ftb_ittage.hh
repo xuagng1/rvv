@@ -26,7 +26,7 @@ namespace branch_prediction
 namespace ftb_pred
 {
 
-class FTBITTAGE : public TimedBaseFTBPredictor
+class FTBITTAGE: public TimedBaseFTBPredictor
 {
     using defer = std::shared_ptr<void>;
     using bitset = boost::dynamic_bitset<>;

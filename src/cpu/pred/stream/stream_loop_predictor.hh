@@ -70,10 +70,10 @@ public:
         }
         auto entry = loopTable.find(branchAddr);
         if (entry != loopTable.end()) {
-            DPRINTF(DecoupleBP || debugFlagOn, "get loop entry valid at %#lx: %d\n", branchAddr, entry->second.valid);
+            DPRINTF(DecoupleBP, "get loop entry valid at %#lx: %d\n", branchAddr, entry->second.valid);
             return entry->second.valid;
         }
-        DPRINTF(DecoupleBP || debugFlagOn, "can not get loop entry at %#lx\n", branchAddr);
+        DPRINTF(DecoupleBP, "can not get loop entry at %#lx\n", branchAddr);
         return false;
     }
 
@@ -84,10 +84,10 @@ public:
         }
         auto entry = loopTable.find(branchAddr);
         if (entry != loopTable.end()) {
-            DPRINTF(DecoupleBP || debugFlagOn, "get trip count at %#lx: %d\n", branchAddr, entry->second.tripCount);
+            DPRINTF(DecoupleBP, "get trip count at %#lx: %d\n", branchAddr, entry->second.tripCount);
             return entry->second.tripCount;
         }
-        DPRINTF(DecoupleBP || debugFlagOn, "can not get trip count at %#lx\n", branchAddr);
+        DPRINTF(DecoupleBP, "can not get trip count at %#lx\n", branchAddr);
         return -1;
     }
     
@@ -102,7 +102,7 @@ public:
         if (entry != loopTable.end()) {
             return entry->second.tripCount == entry->second.detectedCount;
         }
-        DPRINTF(DecoupleBP || debugFlagOn, "can not get trip count at %#lx\n", branchAddr);
+        DPRINTF(DecoupleBP, "can not get trip count at %#lx\n", branchAddr);
         return false;
     }
 

@@ -209,7 +209,7 @@ Queued::notify(const PacketPtr &pkt, const PrefetchInfo &pfi)
 
     // Calculate prefetches given this access
     std::vector<AddrPriority> addresses;
-    calculatePrefetch(pfi, addresses);
+    calculatePrefetch(pkt, pfi, addresses);
 
     // Get the maximu number of prefetches that we are allowed to generate
     size_t max_pfs = getMaxPermittedPrefetches(addresses.size());
@@ -244,6 +244,72 @@ Queued::notify(const PacketPtr &pkt, const PrefetchInfo &pfi)
         } else {
             DPRINTF(HWPrefetch, "Ignoring page crossing prefetch.\n");
         }
+    }
+}
+
+void
+Queued::notifyCross(const PacketPtr &pkt, const PrefetchInfo &pfi,
+        std::vector<AddrPriority> addresses)
+{
+    Addr blk_addr = blockAddress(pfi.getAddr());
+    bool is_secure = pfi.isSecure();
+
+    // Squash queued prefetches if demand miss to same line
+    if (queueSquash) {
+        auto itr = pfq.begin();
+        while (itr != pfq.end()) {
+            if (itr->pfInfo.getAddr() == blk_addr &&
+                itr->pfInfo.isSecure() == is_secure) {
+                DPRINTF(HWPrefetch, "Removing pf candidate addr: %#x "
+                        "(cl: %#x), demand request going to the same addr\n",
+                        itr->pfInfo.getAddr(),
+                        blockAddress(itr->pfInfo.getAddr()));
+                delete itr->pkt;
+                itr = pfq.erase(itr);
+                statsQueued.pfRemovedDemand++;
+            } else {
+                ++itr;
+            }
+        }
+    }
+
+    // Get the maximu number of prefetches that we are allowed to generate
+    size_t max_pfs = getMaxPermittedPrefetches(addresses.size());
+
+    // Queue up generated prefetches
+    size_t num_pfs = 0;
+    for (AddrPriority& addr_prio : addresses) {
+
+        // Block align prefetch address
+        addr_prio.first = blockAddress(addr_prio.first);
+
+        if (!samePage(addr_prio.first, pfi.getAddr())) {
+            statsQueued.pfSpanPage += 1;
+
+            if (hasBeenPrefetched(pkt->getAddr(), pkt->isSecure())) {
+                statsQueued.pfUsefulSpanPage += 1;
+            }
+        }
+
+        bool can_cross_page = (tlb != nullptr);
+        if (can_cross_page || samePage(addr_prio.first, pfi.getAddr())) {
+            PrefetchInfo new_pfi(pfi,addr_prio.first);
+            statsQueued.pfIdentified++;
+            DPRINTF(HWPrefetch, "Found a pf candidate addr: %#x, "
+                    "inserting into prefetch queue.\n", new_pfi.getAddr());
+            // Create and insert the request
+            insert(pkt, new_pfi, addr_prio.second);
+            num_pfs += 1;
+            if (num_pfs == max_pfs) {
+                break;
+            }
+        } else {
+            DPRINTF(HWPrefetch, "Ignoring page crossing prefetch.\n");
+        }
+    }
+    Tick next_pf_time = nextPrefetchReadyTime();
+    if (next_pf_time != MaxTick) {
+        cache->schedMemSideSendEvent(next_pf_time);
     }
 }
 

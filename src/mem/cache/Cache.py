@@ -76,6 +76,9 @@ class BaseCache(ClockedObject):
     cxx_header = "mem/cache/base.hh"
     cxx_class = 'gem5::BaseCache'
 
+    level = Param.Int(-1,
+        "Cache Level: 0 for icache; 1 for dcache; 2 for l2cache; 3 for"\
+        " l3cache. -1 for all other")
     size = Param.MemorySize("Capacity")
     assoc = Param.Unsigned("Associativity")
 
