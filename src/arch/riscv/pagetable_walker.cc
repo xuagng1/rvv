@@ -341,7 +341,6 @@ Walker::handlePendingSquash()
                     "requestors\n",
                     ws->mainReq->getVaddr(), ws->mainReq->getPC());
             it = currStates.erase(it);
-            delete ws;
             num_squashed++;
             if (num_squashed >= numSquashable) {
                 break;

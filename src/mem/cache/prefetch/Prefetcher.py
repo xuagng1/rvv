@@ -460,10 +460,12 @@ class SignaturePathPrefetcher(QueuedPrefetcher):
     pattern_table_replacement_policy = Param.BaseReplacementPolicy(LRURP(),
         "Replacement policy of the pattern table")
 
-    prefetch_confidence_threshold = Param.Float(0.5,
+    prefetch_confidence_threshold = Param.Float(0.75,
         "Minimum confidence to issue prefetches")
-    lookahead_confidence_threshold = Param.Float(0.75,
+    lookahead_confidence_threshold = Param.Float(0.5,
         "Minimum confidence to continue exploring lookahead entries")
+    cross_level_prefetch_threshold = Param.Float(0.9,
+        "Minimum confidence to prefetch to L2 cache")
 
     prefetch_on_access = True
     prefetch_on_pf_hit = True
@@ -782,4 +784,6 @@ class MultiPrefetcher(BasePrefetcher):
     prefetch_on_access = True
     prefetch_on_pf_hit = True
 
-    prefetchers = VectorParam.BasePrefetcher([SignaturePathPrefetcher(), SMSPrefetcher()], "Array of prefetchers")
+    prefetchers = VectorParam.BasePrefetcher(
+        [SignaturePathPrefetcherV3(), SMSPrefetcher()],
+        "Array of prefetchers")

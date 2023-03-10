@@ -164,7 +164,7 @@ FTBITTAGE::putPCHistory(Addr stream_start, const bitset &history, std::vector<Fu
     assert(getDelay() >= 1);
     Addr base_target = stagePreds[getDelay()-1].indirectTarget;
     for (int s = getDelay(); s < stagePreds.size(); ++s) { // need modify
-        Addr useTarget;
+        Addr useTarget = 0;
         DPRINTF(FTBITTAGE, "indirect target=%#lx\n", useTarget);
         if (main_found && !use_alt_pred && !use_base_table) {
             taken = main_entry.counter >= 2;
