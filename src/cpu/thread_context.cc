@@ -65,58 +65,52 @@ ThreadContext::compare(ThreadContext *one, ThreadContext *two)
     DPRINTF(Context, "Comparing thread contexts\n");
 
     // First loop through the integer registers.
-    for (int i = 0; i < regClasses.at(IntRegClass).numRegs(); ++i) {
-        RegId reg(IntRegClass, i);
-        RegVal t1 = one->getReg(reg);
-        RegVal t2 = two->getReg(reg);
+    for (auto &id: *regClasses.at(IntRegClass)) {
+        RegVal t1 = one->getReg(id);
+        RegVal t2 = two->getReg(id);
         if (t1 != t2)
             panic("Int reg idx %d doesn't match, one: %#x, two: %#x",
-                  i, t1, t2);
+                  id.index(), t1, t2);
     }
 
     // Then loop through the floating point registers.
-    for (int i = 0; i < regClasses.at(FloatRegClass).numRegs(); ++i) {
-        RegId reg(FloatRegClass, i);
-        RegVal t1 = one->getReg(reg);
-        RegVal t2 = two->getReg(reg);
+    for (auto &id: *regClasses.at(FloatRegClass)) {
+        RegVal t1 = one->getReg(id);
+        RegVal t2 = two->getReg(id);
         if (t1 != t2)
             panic("Float reg idx %d doesn't match, one: %#x, two: %#x",
-                  i, t1, t2);
+                  id.index(), t1, t2);
     }
 
     // Then loop through the vector registers.
-    const auto &vec_class = regClasses.at(VecRegClass);
-    std::vector<uint8_t> vec1(vec_class.regBytes());
-    std::vector<uint8_t> vec2(vec_class.regBytes());
-    for (int i = 0; i < vec_class.numRegs(); ++i) {
-        RegId rid(VecRegClass, i);
-
-        one->getReg(rid, vec1.data());
-        two->getReg(rid, vec2.data());
+    const auto *vec_class = regClasses.at(VecRegClass);
+    std::vector<uint8_t> vec1(vec_class->regBytes());
+    std::vector<uint8_t> vec2(vec_class->regBytes());
+    for (auto &id: *regClasses.at(VecRegClass)) {
+        one->getReg(id, vec1.data());
+        two->getReg(id, vec2.data());
         if (vec1 != vec2) {
             panic("Vec reg idx %d doesn't match, one: %#x, two: %#x",
-                  i, vec_class.valString(vec1.data()),
-                  vec_class.valString(vec2.data()));
+                  id.index(), vec_class->valString(vec1.data()),
+                  vec_class->valString(vec2.data()));
         }
     }
 
     // Then loop through the predicate registers.
-    const auto &vec_pred_class = regClasses.at(VecPredRegClass);
-    std::vector<uint8_t> pred1(vec_pred_class.regBytes());
-    std::vector<uint8_t> pred2(vec_pred_class.regBytes());
-    for (int i = 0; i < vec_pred_class.numRegs(); ++i) {
-        RegId rid(VecPredRegClass, i);
-
-        one->getReg(rid, pred1.data());
-        two->getReg(rid, pred2.data());
+    const auto *vec_pred_class = regClasses.at(VecPredRegClass);
+    std::vector<uint8_t> pred1(vec_pred_class->regBytes());
+    std::vector<uint8_t> pred2(vec_pred_class->regBytes());
+    for (auto &id: *regClasses.at(VecPredRegClass)) {
+        one->getReg(id, pred1.data());
+        two->getReg(id, pred2.data());
         if (pred1 != pred2) {
             panic("Pred reg idx %d doesn't match, one: %s, two: %s",
-                  i, vec_pred_class.valString(pred1.data()),
-                  vec_pred_class.valString(pred2.data()));
+                  id.index(), vec_pred_class->valString(pred1.data()),
+                  vec_pred_class->valString(pred2.data()));
         }
     }
 
-    for (int i = 0; i < regClasses.at(MiscRegClass).numRegs(); ++i) {
+ for (int i = 0; i < regClasses.at(MiscRegClass)->numRegs(); ++i) {
         RegVal t1 = one->readMiscRegNoEffect(i);
         RegVal t2 = two->readMiscRegNoEffect(i);
         if (t1 != t2)
@@ -125,13 +119,12 @@ ThreadContext::compare(ThreadContext *one, ThreadContext *two)
     }
 
     // loop through the Condition Code registers.
-    for (int i = 0; i < regClasses.at(CCRegClass).numRegs(); ++i) {
-        RegId reg(CCRegClass, i);
-        RegVal t1 = one->getReg(reg);
-        RegVal t2 = two->getReg(reg);
+    for (auto &id: *regClasses.at(CCRegClass)) {
+        RegVal t1 = one->getReg(id);
+        RegVal t2 = two->getReg(id);
         if (t1 != t2)
             panic("CC reg idx %d doesn't match, one: %#x, two: %#x",
-                  i, t1, t2);
+                  id.index(), t1, t2);
     }
     if (one->pcState() != two->pcState())
         panic("PC state doesn't match.");
@@ -222,40 +215,37 @@ serialize(const ThreadContext &tc, CheckpointOut &cp)
     auto &nc_tc = const_cast<ThreadContext &>(tc);
     const auto &regClasses = nc_tc.getIsaPtr()->regClasses();
 
-    const size_t numFloats = regClasses.at(FloatRegClass).numRegs();
+    const size_t numFloats = regClasses.at(FloatRegClass)->numRegs();
     RegVal floatRegs[numFloats];
-    for (int i = 0; i < numFloats; ++i)
-        floatRegs[i] = tc.getRegFlat(RegId(FloatRegClass, i));
+    for (auto &id: *regClasses.at(FloatRegClass))
+        floatRegs[id.index()] = tc.getRegFlat(id);
     // This is a bit ugly, but needed to maintain backwards
     // compatibility.
     arrayParamOut(cp, "floatRegs.i", floatRegs, numFloats);
 
-    const size_t numVecs = regClasses.at(VecRegClass).numRegs();
+    const size_t numVecs = regClasses.at(VecRegClass)->numRegs();
     std::vector<TheISA::VecRegContainer> vecRegs(numVecs);
-    for (int i = 0; i < numVecs; ++i) {
-        RegId reg(VecRegClass, i);
-        tc.getRegFlat(RegId(VecRegClass, i), &vecRegs[i]);
-    }
+    for (auto &id: *regClasses.at(VecRegClass))
+        tc.getRegFlat(id, &vecRegs[id.index()]);
     SERIALIZE_CONTAINER(vecRegs);
 
-    const size_t numPreds = regClasses.at(VecPredRegClass).numRegs();
+    const size_t numPreds = regClasses.at(VecPredRegClass)->numRegs();
     std::vector<TheISA::VecPredRegContainer> vecPredRegs(numPreds);
-    for (int i = 0; i < numPreds; ++i) {
-        tc.getRegFlat(RegId(VecPredRegClass, i), &vecPredRegs[i]);
-    }
+    for (auto &id: *regClasses.at(VecPredRegClass))
+        tc.getRegFlat(id, &vecPredRegs[id.index()]);
     SERIALIZE_CONTAINER(vecPredRegs);
 
-    const size_t numInts = regClasses.at(IntRegClass).numRegs();
+    const size_t numInts = regClasses.at(IntRegClass)->numRegs();
     RegVal intRegs[numInts];
-    for (int i = 0; i < numInts; ++i)
-        intRegs[i] = tc.getRegFlat(RegId(IntRegClass, i));
+    for (auto &id: *regClasses.at(IntRegClass))
+        intRegs[id.index()] = tc.getRegFlat(id);
     SERIALIZE_ARRAY(intRegs, numInts);
 
-    const size_t numCcs = regClasses.at(CCRegClass).numRegs();
+    const size_t numCcs = regClasses.at(CCRegClass)->numRegs();
     if (numCcs) {
         RegVal ccRegs[numCcs];
-        for (int i = 0; i < numCcs; ++i)
-            ccRegs[i] = tc.getRegFlat(RegId(CCRegClass, i));
+        for (auto &id: *regClasses.at(CCRegClass))
+            ccRegs[id.index()] = tc.getRegFlat(id);
         SERIALIZE_ARRAY(ccRegs, numCcs);
     }
 
@@ -269,40 +259,38 @@ unserialize(ThreadContext &tc, CheckpointIn &cp)
 {
     const auto &regClasses = tc.getIsaPtr()->regClasses();
 
-    const size_t numFloats = regClasses.at(FloatRegClass).numRegs();
+    const size_t numFloats = regClasses.at(FloatRegClass)->numRegs();
     RegVal floatRegs[numFloats];
     // This is a bit ugly, but needed to maintain backwards
     // compatibility.
     arrayParamIn(cp, "floatRegs.i", floatRegs, numFloats);
-    for (int i = 0; i < numFloats; ++i)
-        tc.setRegFlat(RegId(FloatRegClass, i), floatRegs[i]);
+    for (auto &id: *regClasses.at(FloatRegClass))
+        tc.setRegFlat(id, floatRegs[id.index()]);
 
-    const size_t numVecs = regClasses.at(VecRegClass).numRegs();
+    const size_t numVecs = regClasses.at(VecRegClass)->numRegs();
     std::vector<TheISA::VecRegContainer> vecRegs(numVecs);
     UNSERIALIZE_CONTAINER(vecRegs);
-    for (int i = 0; i < numVecs; ++i) {
-        tc.setRegFlat(RegId(VecRegClass, i), &vecRegs[i]);
-    }
+    for (auto &id: *regClasses.at(VecRegClass))
+        tc.setRegFlat(id, &vecRegs[id.index()]);
 
-    const size_t numPreds = regClasses.at(VecPredRegClass).numRegs();
+    const size_t numPreds = regClasses.at(VecPredRegClass)->numRegs();
     std::vector<TheISA::VecPredRegContainer> vecPredRegs(numPreds);
     UNSERIALIZE_CONTAINER(vecPredRegs);
-    for (int i = 0; i < numPreds; ++i) {
-        tc.setRegFlat(RegId(VecPredRegClass, i), &vecPredRegs[i]);
-    }
+    for (auto &id: *regClasses.at(VecPredRegClass))
+        tc.setRegFlat(id, &vecPredRegs[id.index()]);
 
-    const size_t numInts = regClasses.at(IntRegClass).numRegs();
+    const size_t numInts = regClasses.at(IntRegClass)->numRegs();
     RegVal intRegs[numInts];
     UNSERIALIZE_ARRAY(intRegs, numInts);
-    for (int i = 0; i < numInts; ++i)
-        tc.setRegFlat(RegId(IntRegClass, i), intRegs[i]);
+    for (auto &id: *regClasses.at(IntRegClass))
+        tc.setRegFlat(id, intRegs[id.index()]);
 
-    const size_t numCcs = regClasses.at(CCRegClass).numRegs();
+    const size_t numCcs = regClasses.at(CCRegClass)->numRegs();
     if (numCcs) {
         RegVal ccRegs[numCcs];
         UNSERIALIZE_ARRAY(ccRegs, numCcs);
-        for (int i = 0; i < numCcs; ++i)
-            tc.setRegFlat(RegId(CCRegClass, i), ccRegs[i]);
+        for (auto &id: *regClasses.at(CCRegClass))
+            tc.setRegFlat(id, ccRegs[id.index()]);
     }
 
     std::unique_ptr<PCStateBase> pc_state(tc.pcState().clone());

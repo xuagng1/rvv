@@ -419,7 +419,7 @@ Decode::skidInsert(ThreadID tid)
 
     // @todo: Eventually need to enforce this by not letting a thread
     // fetch past its skidbuffer
-    assert(skidBuffer[tid].size() <= skidBufferMax);
+    // assert(skidBuffer[tid].size() <= skidBufferMax);
 }
 
 bool

@@ -42,12 +42,15 @@
 #define __CPU__REG_CLASS_HH__
 
 #include <cstddef>
+#include <iterator>
 #include <string>
 
 #include "base/cprintf.hh"
 #include "base/debug.hh"
 #include "base/intmath.hh"
 #include "base/types.hh"
+#include "debug/IntRegs.hh"
+
 
 namespace gem5
 {
@@ -67,6 +70,15 @@ enum RegClassType
     InvalidRegClass = -1
 };
 
+// "Standard" register class names. Using these is encouraged but optional.
+inline constexpr char IntRegClassName[] = "integer";
+inline constexpr char FloatRegClassName[] = "floating_point";
+inline constexpr char VecRegClassName[] = "vector";
+inline constexpr char VecElemClassName[] = "vector_element";
+inline constexpr char VecPredRegClassName[] = "vector_predicate";
+inline constexpr char CCRegClassName[] = "condition_code";
+inline constexpr char MiscRegClassName[] = "miscellaneous";
+
 class RegId;
 
 class RegClassOps
@@ -78,37 +90,51 @@ class RegClassOps
     virtual std::string valString(const void *val, size_t size) const;
 };
 
+class RegClassIterator;
+
 class RegClass
 {
   private:
     RegClassType _type;
+    const char *_name;
 
     size_t _numRegs;
-    size_t _regBytes;
+    size_t _regBytes = sizeof(RegVal);
     // This is how much to shift an index by to get an offset of a register in
     // a register file from the register index, which would otherwise need to
     // be calculated with a multiply.
-    size_t _regShift;
+    size_t _regShift = ceilLog2(sizeof(RegVal));
 
     static inline RegClassOps defaultOps;
     RegClassOps *_ops = &defaultOps;
     const debug::Flag &debugFlag;
 
   public:
-    constexpr RegClass(RegClassType type, size_t num_regs,
-            const debug::Flag &debug_flag, size_t reg_bytes=sizeof(RegVal)) :
-        _type(type), _numRegs(num_regs), _regBytes(reg_bytes),
-        _regShift(ceilLog2(reg_bytes)), debugFlag(debug_flag)
+    constexpr RegClass(RegClassType type, const char *new_name,
+            size_t num_regs, const debug::Flag &debug_flag) :
+        _type(type), _name(new_name), _numRegs(num_regs), debugFlag(debug_flag)
     {}
-    constexpr RegClass(RegClassType type, size_t num_regs,
-            RegClassOps &new_ops, const debug::Flag &debug_flag,
-            size_t reg_bytes=sizeof(RegVal)) :
-        RegClass(type, num_regs, debug_flag, reg_bytes)
+
+    constexpr RegClass
+    ops(RegClassOps &new_ops) const
     {
-        _ops = &new_ops;
+        RegClass reg_class = *this;
+        reg_class._ops = &new_ops;
+        return reg_class;
+    }
+
+    template <class RegType>
+    constexpr RegClass
+    regType() const
+    {
+        RegClass reg_class = *this;
+        reg_class._regBytes = sizeof(RegType);
+        reg_class._regShift = ceilLog2(reg_class._regBytes);
+        return reg_class;
     }
 
     constexpr RegClassType type() const { return _type; }
+    constexpr const char *name() const { return _name; }
     constexpr size_t numRegs() const { return _numRegs; }
     constexpr size_t regBytes() const { return _regBytes; }
     constexpr size_t regShift() const { return _regShift; }
@@ -120,7 +146,17 @@ class RegClass
     {
         return _ops->valString(val, regBytes());
     }
+
+    using iterator = RegClassIterator;
+
+    inline iterator begin() const;
+    inline iterator end() const;
+
+    inline constexpr RegId operator[](RegIndex idx) const;
 };
+
+inline constexpr RegClass
+    invalidRegClass(InvalidRegClass, "invalid", 0, debug::IntRegs);
 
 /** Register ID: describe an architectural register with its class and index.
  * This structure is used instead of just the register index to disambiguate
@@ -130,18 +166,18 @@ class RegClass
 class RegId
 {
   protected:
-    static const char* regClassStrings[];
-    RegClassType regClass;
+    const RegClass *_regClass = nullptr;
     RegIndex regIdx;
     int numPinnedWrites;
 
     friend struct std::hash<RegId>;
+    friend class RegClassIterator;
 
   public:
-    constexpr RegId() : RegId(InvalidRegClass, 0) {}
+    constexpr RegId() : RegId(invalidRegClass, 0) {}
 
-    constexpr RegId(RegClassType reg_class, RegIndex reg_idx)
-        : regClass(reg_class), regIdx(reg_idx), numPinnedWrites(0)
+    constexpr RegId(const RegClass &reg_class, RegIndex reg_idx)
+        : _regClass(&reg_class), regIdx(reg_idx), numPinnedWrites(0)
     {}
 
     constexpr operator RegIndex() const
@@ -152,7 +188,7 @@ class RegId
     constexpr bool
     operator==(const RegId& that) const
     {
-        return regClass == that.classValue() && regIdx == that.index();
+        return classValue() == that.classValue() && regIdx == that.index();
     }
 
     constexpr bool
@@ -167,8 +203,8 @@ class RegId
     constexpr bool
     operator<(const RegId& that) const
     {
-        return regClass < that.classValue() ||
-            (regClass == that.classValue() && (regIdx < that.index()));
+        return classValue() < that.classValue() ||
+            (classValue() == that.classValue() && (regIdx < that.index()));
     }
 
     /**
@@ -177,25 +213,24 @@ class RegId
     constexpr bool
     isRenameable() const
     {
-        return regClass != MiscRegClass && regClass != InvalidRegClass;
+        return classValue() != MiscRegClass && classValue() != InvalidRegClass;
     }
 
     inline bool isZeroReg() const
     {
-        return regClass == InvalidRegClass;
+        return classValue() == InvalidRegClass;
     }
 
     /** @return true if it is an integer physical register. */
-    bool isIntReg() const { return regClass == IntRegClass; }
+    bool isIntReg() const { return classValue() == IntRegClass; }
 
     /** @return true if it is a floating-point physical register. */
-    bool isFloatReg() const { return regClass == FloatRegClass; }
-
+    bool isFloatReg() const { return classValue() == FloatRegClass; }
     /** @return true if it is of the specified class. */
     constexpr bool
     is(RegClassType reg_class) const
     {
-        return regClass == reg_class;
+        return _regClass->type() == reg_class;
     }
 
     /** Index accessors */
@@ -203,12 +238,13 @@ class RegId
     constexpr RegIndex index() const { return regIdx; }
 
     /** Class accessor */
-    constexpr RegClassType classValue() const { return regClass; }
+    constexpr const RegClass &regClass() const { return *_regClass; }
+    constexpr RegClassType classValue() const { return _regClass->type(); }
     /** Return a const char* with the register class name. */
     constexpr const char*
     className() const
     {
-        return regClassStrings[regClass];
+        return _regClass->name();
     }
 
     int getNumPinnedWrites() const { return numPinnedWrites; }
@@ -217,9 +253,76 @@ class RegId
     friend std::ostream&
     operator<<(std::ostream& os, const RegId& rid)
     {
-        return os << rid.className() << "{" << rid.index() << "}";
+        return os << rid.regClass().regName(rid);
     }
 };
+
+class RegClassIterator
+{
+  private:
+    RegId id;
+
+    RegClassIterator(const RegClass &reg_class, RegIndex idx) :
+        id(reg_class, idx)
+    {}
+
+    friend class RegClass;
+
+  public:
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type = std::size_t;
+    using value_type = const RegId;
+    using pointer = value_type *;
+    using reference = value_type &;
+
+    reference operator*() const { return id; }
+    pointer operator->() { return &id; }
+
+    RegClassIterator &
+    operator++()
+    {
+        id.regIdx++;
+        return *this;
+    }
+
+    RegClassIterator
+    operator++(int)
+    {
+        auto tmp = *this;
+        ++(*this);
+        return tmp;
+    }
+
+    bool
+    operator==(const RegClassIterator &other) const
+    {
+        return id == other.id;
+    }
+
+    bool
+    operator!=(const RegClassIterator &other) const
+    {
+        return id != other.id;
+    }
+};
+
+RegClassIterator
+RegClass::begin() const
+{
+    return RegClassIterator(*this, 0);
+}
+
+RegClassIterator
+RegClass::end() const
+{
+    return RegClassIterator(*this, numRegs());
+}
+
+constexpr RegId
+RegClass::operator[](RegIndex idx) const
+{
+    return RegId(*this, idx);
+}
 
 template <typename ValueType>
 class TypedRegClassOps : public RegClassOps
@@ -266,20 +369,21 @@ class PhysRegId : private RegId
     int numRef;
 
   public:
-    explicit PhysRegId() : RegId(InvalidRegClass, -1), flatIdx(-1),
+    explicit PhysRegId() : RegId(invalidRegClass, -1), flatIdx(-1),
                            numPinnedWritesToComplete(0)
     {}
 
     /** Scalar PhysRegId constructor. */
-    explicit PhysRegId(RegClassType _regClass, RegIndex _regIdx,
+    explicit PhysRegId(const RegClass &reg_class, RegIndex _regIdx,
               RegIndex _flatIdx)
-        : RegId(_regClass, _regIdx), flatIdx(_flatIdx),
-          numPinnedWritesToComplete(0), pinned(false), numRef(0)
+        : RegId(reg_class, _regIdx), flatIdx(_flatIdx),
+          numPinnedWritesToComplete(0), pinned(false)
     {}
 
     /** Visible RegId methods */
     /** @{ */
     using RegId::index;
+    using RegId::regClass;
     using RegId::classValue;
     using RegId::className;
     using RegId::is;
@@ -372,7 +476,7 @@ struct hash<gem5::RegId>
     {
         // Extract unique integral values for the effective fields of a RegId.
         const size_t index = static_cast<size_t>(reg_id.index());
-        const size_t class_num = static_cast<size_t>(reg_id.regClass);
+        const size_t class_num = static_cast<size_t>(reg_id.classValue());
 
         const size_t shifted_class_num =
             class_num << (sizeof(gem5::RegIndex) << 3);

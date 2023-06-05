@@ -41,6 +41,7 @@
 #include "arch/riscv/regs/float.hh"
 #include "arch/riscv/regs/int.hh"
 #include "arch/riscv/regs/misc.hh"
+#include "arch/riscv/regs/vector.hh"
 #include "base/bitfield.hh"
 #include "base/compiler.hh"
 #include "base/logging.hh"
@@ -52,6 +53,7 @@
 #include "debug/LLSC.hh"
 #include "debug/MiscRegs.hh"
 #include "debug/RiscvMisc.hh"
+#include "debug/VecRegs.hh"
 #include "mem/packet.hh"
 #include "mem/request.hh"
 #include "params/RiscvISA.hh"
@@ -189,24 +191,38 @@ namespace RiscvISA
     [MISCREG_FFLAGS]        = "FFLAGS",
     [MISCREG_FRM]           = "FRM",
 
+    [MISCREG_VSTART]        = "VSTART",
+    [MISCREG_VXSAT]         = "VXSAT",
+    [MISCREG_VXRM]          = "VXRM",
+    [MISCREG_VCSR]          = "VCSR",
+    [MISCREG_VL]            = "VL",
+    [MISCREG_VTYPE]         = "VTYPE",
+    [MISCREG_VLENB]         = "VLENB",
+
     [MISCREG_NMIVEC]        = "NMIVEC",
     [MISCREG_NMIE]          = "NMIE",
     [MISCREG_NMIP]          = "NMIP",
 }};
 
+namespace
+{
+
+/* Not applicable to RISCV */
+RegClass vecPredRegClass(VecPredRegClass, VecPredRegClassName, 1,
+        debug::IntRegs);
+RegClass ccRegClass(CCRegClass, CCRegClassName, 0, debug::IntRegs);
+
+} // anonymous namespace
+
 ISA::ISA(const Params &p) : BaseISA(p)
 {
-    _regClasses.emplace_back(IntRegClass, int_reg::NumRegs, debug::IntRegs);
-    _regClasses.emplace_back(FloatRegClass, float_reg::NumRegs,
-            debug::FloatRegs);
-
-    /* Not applicable to RISCV */
-    _regClasses.emplace_back(VecRegClass, 1, debug::IntRegs);
-    _regClasses.emplace_back(VecElemClass, 2, debug::IntRegs);
-    _regClasses.emplace_back(VecPredRegClass, 1, debug::IntRegs);
-    _regClasses.emplace_back(CCRegClass, 0, debug::IntRegs);
-
-    _regClasses.emplace_back(MiscRegClass, NUM_MISCREGS, debug::MiscRegs);
+    _regClasses.push_back(&intRegClass);
+    _regClasses.push_back(&floatRegClass);
+    _regClasses.push_back(&vecRegClass);
+    _regClasses.push_back(&vecElemClass);
+    _regClasses.push_back(&vecPredRegClass);
+    _regClasses.push_back(&ccRegClass);
+    _regClasses.push_back(&miscRegClass);
 
     miscRegFile.resize(NUM_MISCREGS);
     clear();
@@ -221,16 +237,14 @@ void
 ISA::copyRegsFrom(ThreadContext *src)
 {
     // First loop through the integer registers.
-    for (int i = 0; i < int_reg::NumRegs; ++i) {
-        RegId reg(IntRegClass, i);
-        tc->setReg(reg, src->getReg(reg));
-    }
+    for (auto &id: intRegClass)
+        tc->setReg(id, src->getReg(id));
 
     // Second loop through the float registers.
-    for (int i = 0; i < float_reg::NumRegs; ++i) {
-        RegId reg(FloatRegClass, i);
-        tc->setReg(reg, src->getReg(reg));
-    }
+    for (auto &id: floatRegClass)
+        tc->setReg(id, src->getReg(id));
+
+    // TODO: Copy vector regs.
 
     // Lastly copy PC/NPC
     tc->pcState(src->pcState());
@@ -245,7 +259,8 @@ void ISA::clear()
     miscRegFile[MISCREG_VENDORID] = 0;
     miscRegFile[MISCREG_ARCHID] = 0;
     miscRegFile[MISCREG_IMPID] = 0;
-    miscRegFile[MISCREG_STATUS] = (2ULL << UXL_OFFSET) | (2ULL << SXL_OFFSET);
+    miscRegFile[MISCREG_STATUS] = (2ULL << UXL_OFFSET) | (2ULL << SXL_OFFSET) |
+                                  (1ULL << FS_OFFSET) | (1ULL << VS_OFFSET);
     miscRegFile[MISCREG_MCOUNTEREN] = 0x7;
     miscRegFile[MISCREG_SCOUNTEREN] = 0x7;
     // don't set it to zero; software may try to determine the supported
@@ -349,6 +364,17 @@ ISA::readMiscReg(int misc_reg)
             else
                 return mbits(val, 63, 1);
         }
+      case MISCREG_VLENB:
+        {
+            return VLENB;
+        }
+        break;
+      case MISCREG_VCSR:
+        {
+            return readMiscRegNoEffect(MISCREG_VXSAT) &
+                  (readMiscRegNoEffect(MISCREG_VXRM) << 1);
+        }
+        break;
       default:
         // Try reading HPM counters
         // As a placeholder, all HPM counters are just cycle counters
@@ -382,7 +408,7 @@ ISA::setMiscRegNoEffect(int misc_reg, RegVal val)
 void
 ISA::setMiscReg(int misc_reg, RegVal val)
 {
-    if (misc_reg == MISCREG_STATUS) {
+        if (misc_reg == MISCREG_STATUS) {
         DPRINTF(RiscvMisc, "setMiscReg: setting mstatus with %#lx\n", val);
     }
     if (misc_reg >= MISCREG_CYCLE && misc_reg <= MISCREG_HPMCOUNTER31) {
@@ -514,6 +540,22 @@ ISA::setMiscReg(int misc_reg, RegVal val)
                 mstatus.sd = 1;
                 setMiscRegNoEffect(MISCREG_STATUS, mstatus);
                 setMiscRegNoEffect(misc_reg, val);
+            }
+            break;
+            case MISCREG_VXSAT:
+            {
+                setMiscRegNoEffect(misc_reg, val & 0x1);
+            }
+            break;
+            case MISCREG_VXRM:
+            {
+                setMiscRegNoEffect(misc_reg, val & 0x3);
+            }
+            break;
+            case MISCREG_VCSR:
+            {
+                setMiscRegNoEffect(MISCREG_VXSAT, val & 0x1);
+                setMiscRegNoEffect(MISCREG_VXRM, (val & 0x6) >> 1);
             }
             break;
           default:

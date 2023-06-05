@@ -40,7 +40,9 @@
  */
 
 #include "cpu/simple/base.hh"
-
+#include "arch/riscv/regs/vector.hh"
+#include "arch/riscv/regs/int.hh"
+#include "arch/riscv/regs/float.hh"
 #include "arch/generic/decoder.hh"
 #include "arch/riscv/regs/misc.hh"
 #include "base/cprintf.hh"
@@ -523,9 +525,9 @@ BaseSimpleCPU::readGem5Regs()
 {
     for (int i = 0; i < 32; i++) {
         diffAllStates->gem5RegFile[i] =
-            threadContexts[curThread]->getReg(RegId(IntRegClass, i));
+            threadContexts[curThread]->getReg(RegId(gem5::RiscvISA::intRegClass, i));
         diffAllStates->gem5RegFile[i + 32] =
-            threadContexts[curThread]->getReg(RegId(FloatRegClass, i));
+            threadContexts[curThread]->getReg(RegId(gem5::RiscvISA::floatRegClass, i));
     }
 }
 

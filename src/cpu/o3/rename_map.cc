@@ -133,7 +133,7 @@ UnifiedRenameMap::init(const BaseISA::RegClasses &regClasses,
     regFile = _regFile;
 
     for (int i = 0; i < renameMaps.size(); i++)
-        renameMaps[i].init(regClasses.at(i), &(freeList->freeLists[i]));
+        renameMaps[i].init(*regClasses.at(i), &(freeList->freeLists[i]));
 }
 
 bool

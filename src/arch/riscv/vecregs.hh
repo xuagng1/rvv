@@ -48,7 +48,8 @@
 
 #include "arch/generic/vec_pred_reg.hh"
 #include "arch/generic/vec_reg.hh"
-
+#include "arch/riscv/regs/vector.hh"
+/*
 namespace gem5
 {
 
@@ -61,5 +62,5 @@ using VecPredRegContainer = ::gem5::DummyVecPredRegContainer;
 
 } // namespace RiscvISA
 } // namespace gem5
-
+*/
 #endif // __ARCH_RISCV_VECREGS_HH__

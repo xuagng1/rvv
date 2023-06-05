@@ -83,7 +83,7 @@ class BaseO3CPU(BaseCPU):
     iewToFetchDelay = Param.Cycles(1, "Issue/Execute/Writeback to fetch "
                                    "delay")
     commitToFetchDelay = Param.Cycles(1, "Commit to fetch delay")
-    fetchWidth = Param.Unsigned(16, "Fetch width")
+    fetchWidth = Param.Unsigned(8, "Fetch width")
     fetchBufferSize = Param.Unsigned(64, "Fetch buffer size in bytes")
     fetchQueueSize = Param.Unsigned(48, "Fetch queue size in micro-ops "
                                     "per-thread")
@@ -93,13 +93,13 @@ class BaseO3CPU(BaseCPU):
                                     "delay")
     commitToDecodeDelay = Param.Cycles(1, "Commit to decode delay")
     fetchToDecodeDelay = Param.Cycles(1, "Fetch to decode delay")
-    decodeWidth = Param.Unsigned(6, "Decode width")
+    decodeWidth = Param.Unsigned(8, "Decode width")
 
     iewToRenameDelay = Param.Cycles(1, "Issue/Execute/Writeback to rename "
                                     "delay")
     commitToRenameDelay = Param.Cycles(1, "Commit to rename delay")
     decodeToRenameDelay = Param.Cycles(1, "Decode to rename delay")
-    renameWidth = Param.Unsigned(6, "Rename width")
+    renameWidth = Param.Unsigned(8, "Rename width")
 
     commitToIEWDelay = Param.Cycles(1, "Commit to "
                "Issue/Execute/Writeback delay")
@@ -107,7 +107,7 @@ class BaseO3CPU(BaseCPU):
                "Issue/Execute/Writeback delay")
     issueToExecuteDelay = Param.Cycles(1, "Issue to execute delay (internal "
               "to the IEW stage)")
-    dispatchWidth = Param.Unsigned(6, "Dispatch width")
+    dispatchWidth = Param.Unsigned(8, "Dispatch width")
     issueWidth = Param.Unsigned(8, "Issue width")
     wbWidth = Param.Unsigned(8, "Writeback width")
     fuPool = Param.FUPool(DefaultFUPool(), "Functional Unit pool")
@@ -144,7 +144,7 @@ class BaseO3CPU(BaseCPU):
             "Number of physical integer registers")
     numPhysFloatRegs = Param.Unsigned(192, "Number of physical floating point "
                                       "registers")
-    numPhysVecRegs = Param.Unsigned(192, "Number of physical vector "
+    numPhysVecRegs = Param.Unsigned(256, "Number of physical vector "
                                       "registers")
     numPhysVecPredRegs = Param.Unsigned(32, "Number of physical predicate "
                                       "registers")

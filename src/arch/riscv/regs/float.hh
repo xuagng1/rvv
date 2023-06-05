@@ -55,6 +55,7 @@
 
 #include "base/bitfield.hh"
 #include "cpu/reg_class.hh"
+#include "debug/FloatRegs.hh"
 
 namespace gem5
 {
@@ -104,7 +105,10 @@ static constexpr float64_t f64(freg_t r) { return r; }
 static constexpr freg_t freg(float16_t f) { return {boxF16(f.v)}; }
 static constexpr freg_t freg(float32_t f) { return {boxF32(f.v)}; }
 static constexpr freg_t freg(float64_t f) { return f; }
-static constexpr freg_t freg(uint_fast16_t f) { return {f}; }
+
+static constexpr freg_t freg(uint16_t f) { return {boxF16(f)}; }
+static constexpr freg_t freg(uint32_t f) { return {boxF32(f)}; }
+static constexpr freg_t freg(uint64_t f) { return {f}; }
 
 namespace float_reg
 {
@@ -151,43 +155,51 @@ enum : RegIndex
     NumRegs
 };
 
+} // namespace float_reg
+
+inline constexpr RegClass floatRegClass(FloatRegClass, FloatRegClassName,
+        float_reg::NumRegs, debug::FloatRegs);
+
+namespace float_reg
+{
+
 inline constexpr RegId
-    Ft0(FloatRegClass, _Ft0Idx),
-    Ft1(FloatRegClass, _Ft1Idx),
-    Ft2(FloatRegClass, _Ft2Idx),
-    Ft3(FloatRegClass, _Ft3Idx),
-    Ft4(FloatRegClass, _Ft4Idx),
-    Ft5(FloatRegClass, _Ft5Idx),
-    Ft6(FloatRegClass, _Ft6Idx),
-    Ft7(FloatRegClass, _Ft7Idx),
+    Ft0 = floatRegClass[_Ft0Idx],
+    Ft1 = floatRegClass[_Ft1Idx],
+    Ft2 = floatRegClass[_Ft2Idx],
+    Ft3 = floatRegClass[_Ft3Idx],
+    Ft4 = floatRegClass[_Ft4Idx],
+    Ft5 = floatRegClass[_Ft5Idx],
+    Ft6 = floatRegClass[_Ft6Idx],
+    Ft7 = floatRegClass[_Ft7Idx],
 
-    Fs0(FloatRegClass, _Fs0Idx),
-    Fs1(FloatRegClass, _Fs1Idx),
+    Fs0 = floatRegClass[_Fs0Idx],
+    Fs1 = floatRegClass[_Fs1Idx],
 
-    Fa0(FloatRegClass, _Fa0Idx),
-    Fa1(FloatRegClass, _Fa1Idx),
-    Fa2(FloatRegClass, _Fa2Idx),
-    Fa3(FloatRegClass, _Fa3Idx),
-    Fa4(FloatRegClass, _Fa4Idx),
-    Fa5(FloatRegClass, _Fa5Idx),
-    Fa6(FloatRegClass, _Fa6Idx),
-    Fa7(FloatRegClass, _Fa7Idx),
+    Fa0 = floatRegClass[_Fa0Idx],
+    Fa1 = floatRegClass[_Fa1Idx],
+    Fa2 = floatRegClass[_Fa2Idx],
+    Fa3 = floatRegClass[_Fa3Idx],
+    Fa4 = floatRegClass[_Fa4Idx],
+    Fa5 = floatRegClass[_Fa5Idx],
+    Fa6 = floatRegClass[_Fa6Idx],
+    Fa7 = floatRegClass[_Fa7Idx],
 
-    Fs2(FloatRegClass, _Fs2Idx),
-    Fs3(FloatRegClass, _Fs3Idx),
-    Fs4(FloatRegClass, _Fs4Idx),
-    Fs5(FloatRegClass, _Fs5Idx),
-    Fs6(FloatRegClass, _Fs6Idx),
-    Fs7(FloatRegClass, _Fs7Idx),
-    Fs8(FloatRegClass, _Fs8Idx),
-    Fs9(FloatRegClass, _Fs9Idx),
-    Fs10(FloatRegClass, _Fs10Idx),
-    Fs11(FloatRegClass, _Fs11Idx),
+    Fs2 = floatRegClass[_Fs2Idx],
+    Fs3 = floatRegClass[_Fs3Idx],
+    Fs4 = floatRegClass[_Fs4Idx],
+    Fs5 = floatRegClass[_Fs5Idx],
+    Fs6 = floatRegClass[_Fs6Idx],
+    Fs7 = floatRegClass[_Fs7Idx],
+    Fs8 = floatRegClass[_Fs8Idx],
+    Fs9 = floatRegClass[_Fs9Idx],
+    Fs10 = floatRegClass[_Fs10Idx],
+    Fs11 = floatRegClass[_Fs11Idx],
 
-    Ft8(FloatRegClass, _Ft8Idx),
-    Ft9(FloatRegClass, _Ft9Idx),
-    Ft10(FloatRegClass, _Ft10Idx),
-    Ft11(FloatRegClass, _Ft11Idx);
+    Ft8 = floatRegClass[_Ft8Idx],
+    Ft9 = floatRegClass[_Ft9Idx],
+    Ft10 = floatRegClass[_Ft10Idx],
+    Ft11 = floatRegClass[_Ft11Idx];
 
 const std::vector<std::string> RegNames = {
     "ft0", "ft1", "ft2", "ft3",
@@ -201,6 +213,21 @@ const std::vector<std::string> RegNames = {
 };
 
 } // namespace float_reg
+
+inline float32_t
+fsgnj32(float32_t a, float32_t b, bool n, bool x) {
+    if (n) b.v = ~b.v;
+    else if (x) b.v = a.v ^ b.v;
+    return f32(insertBits(b.v, 30, 0, a.v));
+}
+
+inline float64_t
+fsgnj64(float64_t a, float64_t b, bool n, bool x) {
+    if (n) b.v = ~b.v;
+    else if (x) b.v = a.v ^ b.v;
+    return f64(insertBits(b.v, 62, 0, a.v));
+}
+
 } // namespace RiscvISA
 } // namespace gem5
 

@@ -134,6 +134,37 @@ class IprPort(FUDesc):
     count = 1
 
 
+class VectorIntArith(FUDesc):
+    opList = [OpDesc(opClass='VectorIntegerArith', opLat=1),
+              OpDesc(opClass='VectorIntegerReduce', opLat=1),
+              OpDesc(opClass='VectorIntegerExtension', opLat=1),]
+    count = 1    
+
+class VectorFloatArith(FUDesc):
+    opList = [OpDesc(opClass='VectorFloatArith', opLat=2),
+              OpDesc(opClass='VectorFloatConvert', opLat=2),
+              OpDesc(opClass='VectorFloatReduce', opLat=2),]
+    count = 1
+
+class VectorMisc(FUDesc):
+    opList = [OpDesc(opClass='VectorMisc')]
+    count = 1 
+
+class VectorReadPort(FUDesc):
+    opList = [OpDesc(opClass='VectorUnitStrideLoad', opLat=4),
+              OpDesc(opClass='VectorIndexedLoad', opLat=4),
+              OpDesc(opClass='VectorUnitStrideFaultOnlyFirstLoad', opLat=4),
+              OpDesc(opClass='VectorUnitStrideMaskLoad', opLat=4),
+              OpDesc(opClass='VectorWholeRegisterLoad', opLat=4),]
+    count = 1
+
+class VectorWritePort(FUDesc):
+    opList = [OpDesc(opClass='VectorUnitStrideStore', opLat=4),
+              OpDesc(opClass='VectorIndexedStore', opLat=4),
+              OpDesc(opClass='VectorUnitStrideMaskStore', opLat=4),
+              OpDesc(opClass='VectorWholeRegisterStore', opLat=1),]
+    count = 1
+
 class ScheduleDelayMatrixMap(SimObject):
     type = 'ScheduleDelayMatrixMap'
     cxx_header = "cpu/o3/iew_delay_calibrator.hh"

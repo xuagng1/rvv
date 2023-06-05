@@ -60,14 +60,14 @@ class Unknown : public RiscvStaticInst
     Fault
     execute(ExecContext *, Trace::InstRecord *) const override
     {
-        return std::make_shared<UnknownInstFault>(machInst);
+        return std::make_shared<UnknownInstFault>(machInst.instBits);
     }
 
     std::string
     generateDisassembly(
             Addr pc, const loader::SymbolTable *symtab) const override
     {
-        return csprintf("unknown opcode %#02x", OPCODE);
+        return csprintf("unknown opcode %#02x",  machInst.opcode);
     }
 };
 

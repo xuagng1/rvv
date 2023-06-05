@@ -1599,13 +1599,13 @@ Fetch::fetch(bool &status_change)
 
     auto *dec_ptr = decoder[tid];
     const Addr pc_mask = dec_ptr->pcMask();
-
+    auto fetchStall = false;
     // Loop through instruction memory from the cache.
     // Keep issuing while fetchWidth is available and branch is not
     // predicted taken
     bool exit_loopbuffer_this_cycle = false;
     while (numInst < fetchWidth && fetchQueue[tid].size() < fetchQueueSize &&
-           !(predictedBranch && !loopBuffer.isActive()) && !quiesce &&
+           !(predictedBranch && !loopBuffer.isActive()) && !quiesce && !fetchStall &&
            !ftqEmpty() && !exit_loopbuffer_this_cycle) {
         // We need to process more memory if we aren't going to get a
         // StaticInst from the rom, the current macroop, or what's already
@@ -1662,6 +1662,7 @@ Fetch::fetch(bool &status_change)
                         pc_offset = 0;
                     }
                 } else {
+                    fetchStall = dec_ptr->isStalled();
                     // We need more bytes for this instruction so blk_offset and
                     // pc_offset will be updated
                     break;
