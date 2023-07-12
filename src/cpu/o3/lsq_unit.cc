@@ -1350,8 +1350,8 @@ LSQUnit::read(LSQRequest *request, ssize_t load_idx)
     LQEntry& load_entry = loadQueue[load_idx];
     const DynInstPtr& load_inst = load_entry.instruction();
 
-    // DPRINTF(LSQUnit, "request: size: %u, Addr: %#lx\n",
-    //         request->mainReq()->getSize(), request->mainReq()->getVaddr());
+    DPRINTF(LSQUnit, "request: size: %u, Addr: %#lx\n",
+            request->mainReq()->getSize(), request->mainReq()->getVaddr());
 
     // if (request->mainReq()->getSize() > 1 &&
     //     request->mainReq()->getVaddr() % request->mainReq()->getSize() != 0) {
